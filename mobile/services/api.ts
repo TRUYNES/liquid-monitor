@@ -18,6 +18,11 @@ export const setApiBaseUrl = (url: string) => {
 export const getStats = async () => {
     try {
         const response = await api.get('/api/stats/current');
+        // Simple validation: check if critical keys exist
+        if (!response.data || typeof response.data !== 'object' || response.data.cpu_usage === undefined) {
+            console.error('Invalid stats data received:', response.data);
+            return null;
+        }
         return response.data;
     } catch (error) {
         console.error('Error fetching stats:', error);
@@ -28,6 +33,9 @@ export const getStats = async () => {
 export const getPeaks = async () => {
     try {
         const response = await api.get('/api/stats/peaks');
+        if (!response.data || typeof response.data !== 'object') {
+            return null;
+        }
         return response.data;
     } catch (error) {
         console.error('Error fetching peaks:', error);
@@ -38,6 +46,9 @@ export const getPeaks = async () => {
 export const getContainers = async () => {
     try {
         const response = await api.get('/api/containers');
+        if (!Array.isArray(response.data)) {
+            return [];
+        }
         return response.data;
     } catch (error) {
         console.error('Error fetching containers:', error);

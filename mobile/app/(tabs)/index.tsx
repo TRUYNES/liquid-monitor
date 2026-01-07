@@ -1,16 +1,39 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ScrollView, RefreshControl, View, Text, StatusBar, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Zap, Cpu, Thermometer, HardDrive, ArrowDown, ArrowUp, Activity } from 'lucide-react-native';
+import { Zap, Cpu, Thermometer, HardDrive, ArrowDown, ArrowUp, Activity, LogOut } from 'lucide-react-native';
 import { LineChart } from 'react-native-chart-kit';
-import { getStats, getPeaks, getHistory } from '@/services/api';
+import { getStats, getPeaks, getHistory, setApiBaseUrl } from '@/services/api';
 import StatsCard from '@/components/StatsCard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import { TouchableOpacity, Alert } from 'react-native';
 
 export default function DashboardScreen() {
     const [stats, setStats] = useState<any>(null);
     const [peaks, setPeaks] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
     const [refreshing, setRefreshing] = useState(false);
+    const router = useRouter();
+
+    const handleDisconnect = async () => {
+        Alert.alert(
+            "Sunucudan Ayrıl",
+            "Mevcut sunucu bağlantısını kesmek istiyor musunuz?",
+            [
+                { text: "İptal", style: "cancel" },
+                {
+                    text: "Ayrıl",
+                    style: "destructive",
+                    onPress: async () => {
+                        await AsyncStorage.removeItem('server_url');
+                        setApiBaseUrl(''); // Reset in memory
+                        router.replace('/connect');
+                    }
+                }
+            ]
+        );
+    };
 
     const fetchData = async () => {
         const [currentData, peaksData, historyData] = await Promise.all([
@@ -75,9 +98,17 @@ export default function DashboardScreen() {
             >
                 <View className="flex-row justify-between items-center mb-6">
                     <Text className="text-3xl font-bold text-white">LiquidMonitor</Text>
-                    <View className="flex-row items-center bg-green-500/20 px-3 py-1 rounded-full border border-green-500/30">
-                        <View className="w-2 h-2 rounded-full bg-green-500 mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                        <Text className="text-green-400 text-xs font-bold tracking-wider">CANLI</Text>
+                    <View className="flex-row items-center gap-2">
+                        <View className="flex-row items-center bg-green-500/20 px-3 py-1 rounded-full border border-green-500/30">
+                            <View className="w-2 h-2 rounded-full bg-green-500 mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                            <Text className="text-green-400 text-xs font-bold tracking-wider">CANLI</Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={handleDisconnect}
+                            className="bg-red-500/20 p-2 rounded-full border border-red-500/30 ml-2"
+                        >
+                            <LogOut size={16} color="#f87171" />
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -85,7 +116,7 @@ export default function DashboardScreen() {
                 <View className="flex-row flex-wrap justify-between">
                     <StatsCard
                         title="CPU Usage"
-                        value={`${stats.cpu_usage}%`}
+                        value={`${stats.cpu_usage ?? 0}%`}
                         subValue={peaks?.cpu_peak ? `${peaks.cpu_peak.value}%` : undefined}
                         timestamp={peaks?.cpu_peak ? peaks.cpu_peak.timestamp : undefined}
                         icon={Cpu}
@@ -94,7 +125,7 @@ export default function DashboardScreen() {
                     />
                     <StatsCard
                         title="RAM Usage"
-                        value={`${stats.ram_usage}%`}
+                        value={`${stats.ram_usage ?? 0}%`}
                         subValue={peaks?.ram_peak ? `${peaks.ram_peak.value}%` : undefined}
                         timestamp={peaks?.ram_peak ? peaks.ram_peak.timestamp : undefined}
                         icon={Zap}
@@ -103,7 +134,7 @@ export default function DashboardScreen() {
                     />
                     <StatsCard
                         title="Temperature"
-                        value={`${stats.cpu_temp}°C`}
+                        value={`${stats.cpu_temp ?? 0}°C`}
                         subValue={peaks?.temp_peak ? `${peaks.temp_peak.value}°C` : undefined}
                         timestamp={peaks?.temp_peak ? peaks.temp_peak.timestamp : undefined}
                         icon={Thermometer}
@@ -112,8 +143,8 @@ export default function DashboardScreen() {
                     />
                     <StatsCard
                         title="Disk Usage"
-                        value={`${stats.disk_usage}%`}
-                        subValue={`${stats.disk_used_gb}/${stats.disk_total_gb} GB`}
+                        value={`${stats.disk_usage ?? 0}%`}
+                        subValue={stats.disk_used_gb ? `${stats.disk_used_gb}/${stats.disk_total_gb} GB` : '0/0 GB'}
                         icon={HardDrive}
                         iconColor="#facc15"
                         borderColor="border-yellow-500/30"
