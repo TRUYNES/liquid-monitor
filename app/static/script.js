@@ -854,8 +854,12 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHistory();
     updateNetworkHistory();
     updateContainers();
+    fetchAlerts();
+
     setInterval(updateStats, 5000);
     setInterval(updateContainers, 5000);
     setInterval(updateHistory, 60000);
     setInterval(updateNetworkHistory, 60000);
+    setInterval(() => fetchAlerts(false), 10000); // Poll alerts every 10s
 });
+

@@ -15,6 +15,7 @@ class SystemMonitor:
     def __init__(self):
         self.last_net_io = self._get_net_io()
         self.last_net_time = time.time()
+        self.alert_cooldowns = {} # metric_level -> timestamp
 
         # Configure psutil for Docker on Raspberry Pi
         # This checks for /host/proc and /host/sys, common in Docker environments
@@ -123,7 +124,72 @@ class SystemMonitor:
     def get_uptime_seconds(self):
         return time.time() - psutil.boot_time()
 
-    def collect(self):
+        return sent_speed, recv_speed
+
+    def check_alerts(self, data, db):
+        if not db: return
+
+        # Thresholds
+        THRESHOLDS = {
+            'cpu': {'warning': 80, 'critical': 95},
+            'ram': {'warning': 85, 'critical': 95},
+            'disk': {'warning': 90, 'critical': 98},
+            'temp': {'warning': 75, 'critical': 85}
+        }
+        
+        # Cooldown in seconds (15 minutes)
+        COOLDOWN = 900 
+        current_time = time.time()
+        
+        alerts_to_add = []
+
+        def add_alert(metric, value, level, msg_template):
+            alert_key = f"{metric}_{level}"
+            last_time = self.alert_cooldowns.get(alert_key, 0)
+            
+            if current_time - last_time > COOLDOWN:
+                alerts_to_add.append({
+                    "level": level,
+                    "message": msg_template.format(value=value)
+                })
+                self.alert_cooldowns[alert_key] = current_time
+
+        # CPU
+        if data['cpu_usage'] > THRESHOLDS['cpu']['critical']:
+            add_alert('cpu', data['cpu_usage'], 'critical', "CPU kullanımı KRİTİK seviyede: %{value}")
+        elif data['cpu_usage'] > THRESHOLDS['cpu']['warning']:
+            add_alert('cpu', data['cpu_usage'], 'warning', "CPU kullanımı yüksek: %{value}")
+
+        # RAM
+        if data['ram_usage'] > THRESHOLDS['ram']['critical']:
+             add_alert('ram', data['ram_usage'], 'critical', "RAM kullanımı KRİTİK seviyede: %{value}")
+        elif data['ram_usage'] > THRESHOLDS['ram']['warning']:
+             add_alert('ram', data['ram_usage'], 'warning', "RAM kullanımı yüksek: %{value}")
+
+        # Disk
+        if data['disk_percent'] > THRESHOLDS['disk']['critical']:
+             add_alert('disk', data['disk_percent'], 'critical', "Disk alanı TÜKENİYOR: %{value}")
+        elif data['disk_percent'] > THRESHOLDS['disk']['warning']:
+             add_alert('disk', data['disk_percent'], 'warning', "Disk doluluk oranı yüksek: %{value}")
+             
+        # Temp
+        if data.get('cpu_temp') and data['cpu_temp'] > THRESHOLDS['temp']['critical']:
+             add_alert('temp', data['cpu_temp'], 'critical', "İşlemci sıcaklığı KRİTİK: {value}°C")
+        elif data.get('cpu_temp') and data['cpu_temp'] > THRESHOLDS['temp']['warning']:
+             add_alert('temp', data['cpu_temp'], 'warning', "İşlemci ısınıyor: {value}°C")
+
+        # Save to DB
+        if alerts_to_add:
+            from app.database import Alert
+            for alert in alerts_to_add:
+                db_alert = Alert(level=alert['level'], message=alert['message'])
+                db.add(db_alert)
+            try:
+                db.commit()
+            except:
+                db.rollback()
+
+    def collect(self, db=None):
         # Prevent "stat stealing" between API calls and DB background loop
         # Only update real stats if some time has passed (e.g., 2 seconds)
         # Otherwise return cached result.
@@ -144,17 +210,21 @@ class SystemMonitor:
         data = {
             "cpu_usage": self.get_cpu_usage(),
             "ram_usage": self.get_ram_usage(),
-            "cpu_temp": self.get_cpu_temp(),
-            "disk_usage": self.get_disk_usage(),
-            "disk_total_gb": round(disk.total / (1024**3), 2),
-            "disk_used_gb": round(disk.used / (1024**3), 2),
-            "disk_free_gb": round(disk.free / (1024**3), 2),
+            "disk_percent": disk.percent,
+            "disk_total": disk.total,
+            "disk_used": disk.used,
+            "disk_free": disk.free,
             "net_sent_speed": upload,
             "net_recv_speed": download,
-            "processes": self.get_process_count(),
-            "uptime": self.get_uptime_seconds()
+            "cpu_temp": self.get_cpu_temp(),
+            "uptime": self.get_uptime_seconds(),
+            "timestamp": datetime.now().isoformat()
         }
         
+        # Check alerts (pass db session)
+        if db:
+            self.check_alerts(data, db)
+
         self._collect_cache = data
         self._last_collect_time = current_time
         return data

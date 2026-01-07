@@ -37,6 +37,15 @@ class ContainerTraffic(Base):
     last_docker_tx = Column(Float, default=0.0) # Raw Docker Bytes
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class Alert(Base):
+    __tablename__ = "alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    level = Column(String) # 'warning', 'critical'
+    message = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    is_read = Column(Boolean, default=False)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 

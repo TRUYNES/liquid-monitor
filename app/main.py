@@ -32,27 +32,37 @@ def get_containers(db: Session = Depends(get_db)):
 async def collect_metrics_loop():
     while True:
         try:
-            # Collect data
-            data = monitor.collect()
-            
-            # Save to DB
-            db = next(get_db())
-            metric = SystemMetric(
-                cpu_usage=data["cpu_usage"],
-                ram_usage=data["ram_usage"],
-                cpu_temp=data["cpu_temp"],
-                disk_usage=data["disk_usage"],
-                net_sent_speed=data["net_sent_speed"],
-                net_recv_speed=data["net_recv_speed"]
-            )
-            db.add(metric)
-            db.commit()
-            
-            # Cleanup old data (older than 30 days) - Run every 1 hour approximately
-            if datetime.now().minute == 0 and datetime.now().second < 10:
-                 cutoff = datetime.utcnow() - timedelta(days=30)
-                 db.query(SystemMetric).filter(SystemMetric.timestamp < cutoff).delete()
-                 db.commit()
+            # Create a new session for this cycle
+            db = SessionLocal()
+            try:
+                # Pass db to collect for alert checking
+                data = monitor.collect(db=db) 
+                
+                # ... existing persistence logic ...
+                metric = SystemMetric(
+                    cpu_usage=data['cpu_usage'],
+                    ram_usage=data['ram_usage'],
+                    disk_usage=data['disk_percent'],
+                    net_sent_speed=data['net_sent_speed'],
+                    net_recv_speed=data['net_recv_speed'],
+                    cpu_temp=data.get('cpu_temp')
+                )
+                db.add(metric)
+                db.commit()
+                
+                # Cleanup old data (older than 30 days) - Run every 1 hour approximately
+                if datetime.now().minute == 0 and datetime.now().second < 10:
+                     cutoff = datetime.utcnow() - timedelta(days=30)
+                     db.query(SystemMetric).filter(SystemMetric.timestamp < cutoff).delete()
+                     
+                     # Also cleanup old alerts (older than 7 days)
+                     from .database import Alert
+                     alert_cutoff = datetime.utcnow() - timedelta(days=7)
+                     db.query(Alert).filter(Alert.timestamp < alert_cutoff).delete()
+                     
+                     db.commit()
+            finally:
+                db.close()
             
         except Exception as e:
             logger.error(f"Error in metric collection: {e}")
@@ -93,13 +103,30 @@ def get_history(period: str = "24h", db: Session = Depends(get_db)):
     elif period == "30d":
         return metrics[::240]
         
-    return metrics[::5] # Return 1 minute resolution for 24h (every 12th record if 5s, actually 5s*12=60s. wait, 5s interval. ::12 is 1 min)
+    return metrics[::5] # Return 1 minute resolution for 24h
     # Actually current frontend behavior: 
     # Frontend handled 'downsampling' by taking modulus. 
     # Better to send less data from backend.
     # Let's verify existing logic: 5s interval.
     # 24h = 17280 points. Sending all is heavy.
     # ::12 = every 60s. 1440 points for 24h. Reasonable.
+
+@app.get("/api/alerts")
+def get_alerts(limit: int = 50, db: Session = Depends(get_db)):
+    from .database import Alert
+    alerts = db.query(Alert).order_by(Alert.timestamp.desc()).limit(limit).all()
+    return alerts
+
+@app.post("/api/alerts/clear")
+def clear_alerts(db: Session = Depends(get_db)):
+    from .database import Alert
+    try:
+        db.query(Alert).delete()
+        db.commit()
+        return {"status": "success"}
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": str(e)}
 
 @app.get("/api/stats/peaks")
 def get_peaks(db: Session = Depends(get_db)):
