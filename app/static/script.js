@@ -455,8 +455,8 @@ async function updateContainers() {
         const activeCount = data.filter(c => c.state === 'running').length;
         document.getElementById('container-count').innerText = activeCount;
 
-        // Check for top network users (> 1 Mbps approx 125 KB/s)
-        const THRESHOLD_BPS = 125000; // 1 Mbps in Bytes/s
+        // Check for top network users (> 100 KB/s)
+        const THRESHOLD_BPS = 20480; // 20 KB/s - lowered to ensure visibility during testing
 
         let maxDown = 0;
         let topDownContainer = null;
@@ -464,15 +464,23 @@ async function updateContainers() {
         let topUpContainer = null;
 
         data.forEach(c => {
-            if (c.net_rx_speed > maxDown) {
-                maxDown = c.net_rx_speed;
+            // Ensure values are numbers
+            const dlSpeed = Number(c.net_rx_speed) || 0;
+            const ulSpeed = Number(c.net_tx_speed) || 0;
+
+            if (dlSpeed > maxDown) {
+                maxDown = dlSpeed;
                 topDownContainer = c;
             }
-            if (c.net_tx_speed > maxUp) {
-                maxUp = c.net_tx_speed;
+            if (ulSpeed > maxUp) {
+                maxUp = ulSpeed;
                 topUpContainer = c;
             }
         });
+
+        // Debug: Check if we are finding anything
+        // console.log("MaxDL:", maxDown, "Container:", topDownContainer?.name);
+        // console.log("MaxUL:", maxUp, "Container:", topUpContainer?.name);
 
         // Update UI for Top Downloader
         const downEl = document.getElementById('top-dl-container');
