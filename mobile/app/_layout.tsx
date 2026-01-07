@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import React, { useEffect, useState } from 'react';
 import 'react-native-reanimated';
-import '../global.css';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setApiBaseUrl } from '@/services/api';
 import { useColorScheme } from '@/components/useColorScheme';
+import { setApiBaseUrl } from '@/services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import '../global.css';
 
 export {
   // Catch any errors thrown by the Layout component.

@@ -60,9 +60,29 @@ export default function DashboardScreen() {
 
     if (!stats) {
         return (
-            <View className="flex-1 bg-background justify-center items-center">
+            <View className="flex-1 bg-background justify-center items-center p-6">
                 <Activity size={48} color="#60a5fa" />
-                <Text className="text-gray-400 mt-4">Connecting to LiquidMonitor...</Text>
+                <Text className="text-gray-400 mt-4 text-center">LiquidMonitor'e bağlanılıyor...</Text>
+            </View>
+        );
+    }
+
+    if (stats.error === 'AUTH_REQUIRED') {
+        return (
+            <View className="flex-1 bg-background justify-center items-center p-6">
+                <View className="bg-red-500/10 p-4 rounded-2xl items-center border border-red-500/20">
+                    <Text className="text-red-400 text-xl font-bold mb-2">Erişim Engellendi</Text>
+                    <Text className="text-gray-300 text-center mb-4">
+                        Sunucu (Cloudflare Access) kimlik doğrulaması istiyor.
+                        Lütfen bu ağda yetkilendirilmiş bir bağlantı kullanın veya yerel IP adresi deneyin.
+                    </Text>
+                    <TouchableOpacity
+                        onPress={handleDisconnect}
+                        className="bg-red-500 px-6 py-3 rounded-xl active:opacity-80"
+                    >
+                        <Text className="text-white font-bold">Sunucuyu Değiştir</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         );
     }

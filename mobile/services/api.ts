@@ -18,6 +18,12 @@ export const setApiBaseUrl = (url: string) => {
 export const getStats = async () => {
     try {
         const response = await api.get('/api/stats/current');
+        // Check if response is HTML (likely Cloudflare Access or other auth wall)
+        if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE html>')) {
+            console.error('Cloudflare Access or Auth Wall detected');
+            return { error: 'AUTH_REQUIRED' };
+        }
+
         // Simple validation: check if critical keys exist
         if (!response.data || typeof response.data !== 'object' || response.data.cpu_usage === undefined) {
             console.error('Invalid stats data received:', response.data);
