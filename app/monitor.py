@@ -241,11 +241,15 @@ class SystemMonitor:
                         "error": str(e)
                     }
 
-            # Use ThreadPoolExecutor for parallel processing
-            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                results = list(executor.map(process_container, containers))
-            
-            containers_data = results
+            # Sequential processing is safer for stability
+            # Threading removed due to "No containers" issue reported by user
+            containers_data = []
+            for container in containers:
+                try:
+                    c_data = process_container(container)
+                    containers_data.append(c_data)
+                except Exception as e:
+                    print(f"Error processing container {container.name}: {e}")
 
         except Exception as e:
             print(f"Error listing containers: {e}")
