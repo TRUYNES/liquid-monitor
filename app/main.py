@@ -1,0 +1,100 @@
+from fastapi import FastAPI, Depends
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+import asyncio
+from datetime import datetime, timedelta
+import logging
+
+from .database import engine, Base, get_db, SystemMetric
+from .monitor import SystemMonitor
+
+# Initialize Database
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="LiquidMonitor")
+monitor = SystemMonitor()
+logger = logging.getLogger("uvicorn")
+
+# Serve Static Files
+# app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+@app.get("/")
+def read_root():
+    return FileResponse("app/static/index.html")
+
+@app.get("/api/containers")
+def get_containers():
+    return monitor.get_containers()
+
+# Data Collection Background Task
+async def collect_metrics_loop():
+    while True:
+        try:
+            # Collect data
+            data = monitor.collect()
+            
+            # Save to DB
+            db = next(get_db())
+            metric = SystemMetric(
+                cpu_usage=data["cpu_usage"],
+                ram_usage=data["ram_usage"],
+                cpu_temp=data["cpu_temp"],
+                disk_usage=data["disk_usage"],
+                net_sent_speed=data["net_sent_speed"],
+                net_recv_speed=data["net_recv_speed"]
+            )
+            db.add(metric)
+            db.commit()
+            
+            # Cleanup old data (older than 24 hours) - Run every 1 hour approximately
+            # 5s sleep * 720 = 3600s
+            if datetime.now().minute == 0 and datetime.now().second < 10:
+                 cutoff = datetime.utcnow() - timedelta(hours=24)
+                 db.query(SystemMetric).filter(SystemMetric.timestamp < cutoff).delete()
+                 db.commit()
+            
+        except Exception as e:
+            logger.error(f"Error in metric collection: {e}")
+        
+        await asyncio.sleep(5)  # Collect every 5 seconds
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(collect_metrics_loop())
+
+# API Endpoints
+
+@app.get("/api/stats/current")
+def get_current_stats():
+    # Return live data directly from monitor to be snappy
+    data = monitor.collect()
+    return data
+
+@app.get("/api/stats/history")
+def get_history(db: Session = Depends(get_db)):
+    # Get all records from last 24h
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    metrics = db.query(SystemMetric).filter(SystemMetric.timestamp > cutoff).order_by(SystemMetric.timestamp.asc()).all()
+    return metrics
+
+@app.get("/api/stats/peaks")
+def get_peaks(db: Session = Depends(get_db)):
+    # Find max values in last 24h
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    
+    def get_max(field):
+        record = db.query(SystemMetric).filter(SystemMetric.timestamp > cutoff).order_by(field.desc()).first()
+        return {"value": getattr(record, field.name), "timestamp": record.timestamp} if record else None
+
+    return {
+        "cpu_peak": get_max(SystemMetric.cpu_usage),
+        "ram_peak": get_max(SystemMetric.ram_usage),
+        "temp_peak": get_max(SystemMetric.cpu_temp),
+        "net_down_peak": get_max(SystemMetric.net_recv_speed),
+        "net_up_peak": get_max(SystemMetric.net_sent_speed),
+    }
+
+# Mount static files *after* defining API to avoid conflicts if root was mounted
+app.mount("/", StaticFiles(directory="app/static", html=True), name="static")

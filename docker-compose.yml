@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  liquid-monitor:
+    build: .
+    image: liquid-monitor:latest
+    container_name: liquid-monitor
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount host /proc and /sys for accurate host metrics from within container
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    environment:
+      - PROCFS_PATH=/host/proc
+      - SYSFS_PATH=/host/sys
+    # Privileged mode helps with accessing hardware sensors (temp)
+    privileged: true

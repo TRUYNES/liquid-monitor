@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiquidMonitor</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        glass: 'rgba(255, 255, 255, 0.1)',
+                        glassBorder: 'rgba(255, 255, 255, 0.2)',
+                    },
+                    backdropBlur: {
+                        xs: '2px',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen overflow-x-hidden relative font-sans">
+
+    <!-- Animated Background Blobs -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div
+            class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob">
+        </div>
+        <div
+            class="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob animation-delay-2000">
+        </div>
+        <div
+            class="absolute bottom-[-20%] left-[20%] w-[500px] h-[500px] bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob animation-delay-4000">
+        </div>
+        <div
+            class="absolute top-[40%] right-[10%] w-[400px] h-[400px] bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000">
+        </div>
+        <div
+            class="absolute bottom-[10%] right-[-5%] w-[450px] h-[450px] bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-35 animate-blob">
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8 glass-panel p-6 rounded-2xl">
+            <div class="flex items-center gap-4">
+                <div
+                    class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h1
+                        class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">
+                        Liquid<span class="font-light">Monitor</span>
+                    </h1>
+                    <p class="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        Sistem Durumu Panosu
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="text-right">
+                    <div class="text-xs text-gray-400 mb-1">Çalışma Süresi</div>
+                    <div id="uptime-display" class="text-xl font-mono font-bold text-green-400">00:00:00</div>
+                </div>
+                <div class="w-px h-12 bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
+                <div class="text-right">
+                    <div class="text-xs text-gray-400 mb-1">Son Güncelleme</div>
+                    <div id="last-update" class="text-sm font-mono text-blue-400">--:--:--</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- CPU Card -->
+            <div class="glass-card group hover:scale-105 transition-transform duration-300">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-gray-400 text-sm font-medium">CPU Kullanımı</h3>
+                        <div class="text-2xl font-bold mt-1" id="cpu-val">0%</div>
+                    </div>
+                    <div class="p-2 bg-blue-500/20 rounded-lg">
+                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <!-- Peak Indicator -->
+                <div class="text-xs text-gray-400 flex justify-between items-center">
+                    <span>Pik (24s):</span>
+                    <span id="cpu-peak" class="text-blue-300 font-mono">0%</span>
+                </div>
+                <div class="w-full bg-gray-700/50 rounded-full h-1.5 mt-3">
+                    <div id="cpu-bar" class="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- RAM Card -->
+            <div class="glass-card group hover:scale-105 transition-transform duration-300">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-gray-400 text-sm font-medium">RAM Kullanımı</h3>
+                        <div class="text-2xl font-bold mt-1" id="ram-val">0%</div>
+                    </div>
+                    <div class="p-2 bg-purple-500/20 rounded-lg">
+                        <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-400 flex justify-between items-center">
+                    <span>Pik (24s):</span>
+                    <span id="ram-peak" class="text-purple-300 font-mono">0%</span>
+                </div>
+                <div class="w-full bg-gray-700/50 rounded-full h-1.5 mt-3">
+                    <div id="ram-bar" class="bg-purple-500 h-1.5 rounded-full transition-all duration-500"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Temp Card -->
+            <div class="glass-card group hover:scale-105 transition-transform duration-300">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-gray-400 text-sm font-medium">Sıcaklık</h3>
+                        <div class="text-2xl font-bold mt-1" id="temp-val">0°C</div>
+                    </div>
+                    <div class="p-2 bg-red-500/20 rounded-lg">
+                        <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-400 flex justify-between items-center">
+                    <span>Pik (24s):</span>
+                    <span id="temp-peak" class="text-red-300 font-mono">0°C</span>
+                </div>
+                <div class="w-full bg-gray-700/50 rounded-full h-1.5 mt-3">
+                    <div id="temp-bar" class="bg-red-500 h-1.5 rounded-full transition-all duration-500"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Disk Card -->
+            <div class="glass-card group hover:scale-105 transition-transform duration-300">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-gray-400 text-sm font-medium">Disk Kullanımı</h3>
+                        <div class="text-2xl font-bold mt-1" id="disk-val">0%</div>
+                    </div>
+                    <div class="p-2 bg-yellow-500/20 rounded-lg">
+                        <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-400 space-y-1">
+                    <div class="flex justify-between">
+                        <span>Kullanılan:</span>
+                        <span id="disk-used" class="text-yellow-300 font-mono">0 GB</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Boş:</span>
+                        <span id="disk-free" class="text-green-300 font-mono">0 GB</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Toplam:</span>
+                        <span id="disk-total" class="text-gray-300 font-mono">0 GB</span>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-700/50 rounded-full h-1.5 mt-3">
+                    <div id="disk-bar" class="bg-yellow-500 h-1.5 rounded-full transition-all duration-500"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section: Main History + Network Traffic -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Main History Chart (CPU, RAM, Temp) -->
+            <div class="glass-card p-6">
+                <h3 class="text-lg font-bold mb-6">24 Saatlik Geçmiş (CPU, RAM, Sıcaklık)</h3>
+                <div class="h-80 w-full relative">
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Network Traffic Chart -->
+            <div class="glass-card p-6">
+                <h3 class="text-lg font-bold mb-6">Ağ Trafiği (24 Saat)</h3>
+                <div class="h-80 w-full relative">
+                    <canvas id="networkChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Stats & Processes Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Network Stats (1 Col) -->
+            <div class="glass-card lg:col-span-1">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z">
+                        </path>
+                    </svg>
+                    Ağ Trafiği
+                </h3>
+                <div class="space-y-4">
+                    <div class="bg-gray-800/30 rounded-xl p-4 flex justify-between items-center">
+                        <span class="text-gray-400 text-sm">İndirme (Down)</span>
+                        <div class="text-right">
+                            <div class="text-xl font-bold text-green-400" id="net-down">0 MB/s</div>
+                            <div class="text-xs text-gray-500">Pik: <span id="peak-down">0</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800/30 rounded-xl p-4 flex justify-between items-center">
+                        <span class="text-gray-400 text-sm">Yükleme (Up)</span>
+                        <div class="text-right">
+                            <div class="text-xl font-bold text-blue-400" id="net-up">0 MB/s</div>
+                            <div class="text-xs text-gray-500">Pik: <span id="peak-up">0</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Containers Table (Full Width) -->
+            <div class="glass-card lg:col-span-3 overflow-hidden">
+                <div class="flex justify-between items-center mb-4 px-2">
+                    <h3 class="text-lg font-bold">Konteyner Monitörü</h3>
+                    <div class="text-xs text-gray-400">
+                        <span id="container-count">0</span> Konteyner Çalışıyor
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-gray-400 uppercase bg-gray-700/30">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 cursor-pointer hover:text-white transition-colors"
+                                    onclick="sortContainers('name')">Ad ↕</th>
+                                <th scope="col" class="px-4 py-3 cursor-pointer hover:text-white transition-colors"
+                                    onclick="sortContainers('state')">Durum ↕</th>
+                                <th scope="col" class="px-4 py-3 cursor-pointer hover:text-white transition-colors"
+                                    onclick="sortContainers('cpu')">CPU % ↕</th>
+                                <th scope="col" class="px-4 py-3 cursor-pointer hover:text-white transition-colors"
+                                    onclick="sortContainers('mem')">RAM % ↕</th>
+                                <th scope="col" class="px-4 py-3 text-right">Net I/O</th>
+                                <th scope="col" class="px-4 py-3 text-right">RAM Detay</th>
+                            </tr>
+                        </thead>
+                        <tbody id="container-list" class="divide-y divide-gray-700/50">
+                            <!-- Rows will be populated by JS -->
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-gray-400">
+                                    Veriler yükleniyor...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
