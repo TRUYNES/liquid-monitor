@@ -12,20 +12,23 @@ from .database import ContainerTraffic
 # if "PROCFS_PATH" in os.environ:
 #     psutil.PROCFS_PATH = os.environ["PROCFS_PATH"]
 
+# Configure psutil to look at host procfs if mapped (for Docker)
+if os.path.exists("/host/proc") and os.path.exists("/host/sys"):
+    psutil.PROCFS_PATH = "/host/proc"
+    psutil.SYSFS_PATH = "/host/sys"
+# Fallback to environment variable if not in /host context
+elif "PROCFS_PATH" in os.environ:
+    psutil.PROCFS_PATH = os.environ["PROCFS_PATH"]
+
 class SystemMonitor:
     def __init__(self):
         self.last_net_io = self._get_net_io()
         self.last_net_time = time.time()
         self.alert_cooldowns = {} # metric_level -> timestamp
-
-        # Configure psutil for Docker on Raspberry Pi
-        # This checks for /host/proc and /host/sys, common in Docker environments
-        if os.path.exists("/host/proc") and os.path.exists("/host/sys"):
-            psutil.PROCFS_PATH = "/host/proc"
-            psutil.SYSFS_PATH = "/host/sys"
-        # Fallback to environment variable if not in /host context
-        elif "PROCFS_PATH" in os.environ:
-            psutil.PROCFS_PATH = os.environ["PROCFS_PATH"]
+        
+        # Initialize Cache
+        self._collect_cache = None
+        self._last_collect_time = 0
 
         # Initialize Docker client
         try:
@@ -43,7 +46,12 @@ class SystemMonitor:
             pass
 
     def get_cpu_usage(self):
-        return psutil.cpu_percent(interval=None)
+        # Blocking call for 0.5s to get accurate reading
+        # This prevents "stuck at 100%" issues with interval=None in some envs
+        try:
+            return psutil.cpu_percent(interval=0.5)
+        except:
+            return 0.0
 
     def get_ram_usage(self):
         return psutil.virtual_memory().percent
@@ -196,12 +204,6 @@ class SystemMonitor:
         # Otherwise return cached result.
         current_time = time.time()
         
-        # Initialize cache if missing
-        if not hasattr(self, '_collect_cache'):
-            self._collect_cache = None
-            self._last_collect_time = 0
-            
-        # Return cache if fresh enough (protects the delta calculation)
         if self._collect_cache and (current_time - self._last_collect_time < 2.0):
             return self._collect_cache
 
