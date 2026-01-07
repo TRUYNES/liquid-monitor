@@ -86,7 +86,8 @@ def get_peaks(db: Session = Depends(get_db)):
     
     def get_max(field):
         record = db.query(SystemMetric).filter(SystemMetric.timestamp > cutoff).order_by(field.desc()).first()
-        return {"value": getattr(record, field.name), "timestamp": record.timestamp} if record else None
+        # Append 'Z' to indicate UTC time so frontend can convert to local
+        return {"value": getattr(record, field.name), "timestamp": record.timestamp.isoformat() + "Z"} if record else None
 
     return {
         "cpu_peak": get_max(SystemMetric.cpu_usage),
