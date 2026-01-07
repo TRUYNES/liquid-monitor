@@ -22,24 +22,13 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
+        headerShown: false,
+        tabBarStyle: { display: 'none' },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Monitor',
-          tabBarIcon: ({ color }) => <TabBarIcon name="bar-chart" color={color} />,
-          headerShown: false, // Hide header since we have custom one in screen
-        }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Services',
-          tabBarIcon: ({ color }) => <TabBarIcon name="server" color={color} />,
-          headerShown: false,
+          href: null, // Hides from tab bar (if visible)
         }}
       />
     </Tabs>
