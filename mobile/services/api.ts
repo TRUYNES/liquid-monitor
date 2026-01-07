@@ -38,4 +38,23 @@ export const getContainers = async () => {
     }
 };
 
+export const getHistory = async () => {
+    try {
+        const response = await api.get('/api/stats/history');
+        const data = response.data;
+        if (!Array.isArray(data)) return [];
+
+        // Sample down to ~12 points for the chart for performance
+        const step = Math.ceil(data.length / 12) || 1;
+        const sampled = [];
+        for (let i = 0; i < data.length; i += step) {
+            sampled.push(data[i]);
+        }
+        return sampled;
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        return [];
+    }
+};
+
 export default api;
