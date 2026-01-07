@@ -165,6 +165,17 @@ class SystemMonitor:
         if not hasattr(self, '_container_net_cache'):
             self._container_net_cache = {}
 
+        if not hasattr(self, '_collecting_containers'):
+            self._collecting_containers = False
+
+        # Concurrency protection: If we are already collecting, skip this turn
+        # This prevents piling up Docker requests if they take > 1s
+        if self._collecting_containers:
+            # print("Skipping container collection (busy)")
+            return self._container_stats_cache.get('last_data', [])
+
+        self._collecting_containers = True
+
         try:
             containers = self.docker_client.containers.list()
             current_time = time.time()
@@ -280,7 +291,7 @@ class SystemMonitor:
                         data = future.result()
                         containers_data.append(data)
                     except Exception as exc:
-                        print(f"Container processing generated an exception: {exc}")
+                        # print(f"Container processing generated an exception: {exc}")
                         # Append error state instead of missing container
                         containers_data.append({
                             "id": c.short_id, "name": c.name, "state": "error", "error": str(exc),
@@ -289,12 +300,18 @@ class SystemMonitor:
                         })
             
         except Exception as e:
-            print(f"Error listing containers: {e}")
-            
+            # print(f"Error listing containers: {e}")
+            pass
             
         # Append system services (Tailscale, Cloudflare)
         containers_data.extend(self.get_system_services())
         
+        # Cache the result for concurrency fallback
+        if not hasattr(self, '_container_stats_cache'):
+            self._container_stats_cache = {}
+        self._container_stats_cache['last_data'] = containers_data
+
+        self._collecting_containers = False
         return containers_data
 
     def get_system_services(self):
