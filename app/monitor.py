@@ -177,6 +177,8 @@ class SystemMonitor:
                     # Network I/O
                     net_rx_total = 0
                     net_tx_total = 0
+                    
+                    # DEBUG: Log network presence
                     if 'networks' in stats:
                         for iface in stats['networks']:
                             net_rx_total += stats['networks'][iface]['rx_bytes']
@@ -240,7 +242,6 @@ class SystemMonitor:
                     }
 
             # Use ThreadPoolExecutor for parallel processing
-            import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
                 results = list(executor.map(process_container, containers))
             
