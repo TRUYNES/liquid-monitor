@@ -25,8 +25,8 @@ def read_root():
     return FileResponse("app/static/index.html")
 
 @app.get("/api/containers")
-def get_containers():
-    return monitor.get_containers()
+def get_containers(db: Session = Depends(get_db)):
+    return monitor.get_containers(db)
 
 # Data Collection Background Task
 async def collect_metrics_loop():

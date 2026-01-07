@@ -153,7 +153,7 @@ class SystemMonitor:
         self._last_collect_time = current_time
         return data
 
-    def get_containers(self):
+    def get_containers(self, db=None):
         if not self.docker_client:
             return []
         
@@ -244,8 +244,76 @@ class SystemMonitor:
                         "memory_usage": mem_usage,
                         "memory_limit": mem_limit,
                         "memory_percent": round(mem_percent, 2),
-                        "net_rx": net_rx_total,
-                        "net_tx": net_tx_total,
+                    # Container Data Persistence Logic
+                    # If DB session is provided, we calculate the accumulated total
+                    # by checking the delta since the last seen raw value.
+                    final_rx = net_rx_total
+                    final_tx = net_tx_total
+                    
+                    if db:
+                        try:
+                            # 1. Get or create record
+                            record = db.query(ContainerTraffic).filter(ContainerTraffic.name == container.name).first()
+                            if not record:
+                                record = ContainerTraffic(
+                                    name=container.name,
+                                    total_rx=net_rx_total,
+                                    total_tx=net_tx_total,
+                                    last_docker_rx=net_rx_total,
+                                    last_docker_tx=net_tx_total
+                                )
+                                db.add(record)
+                                db.commit()
+                                # First run: total is just current
+                                final_rx = net_rx_total
+                                final_tx = net_tx_total
+                            else:
+                                # 2. Calculate Delta
+                                # Default delta is difference from last seen
+                                delta_rx = net_rx_total - record.last_docker_rx
+                                delta_tx = net_tx_total - record.last_docker_tx
+                                
+                                # Detect Reset (e.g. Current 50MB < Last 100MB -> Container Restarted)
+                                # In this case, delta is just the Current value (starts from 0)
+                                if net_rx_total < record.last_docker_rx:
+                                    delta_rx = net_rx_total
+                                
+                                if net_tx_total < record.last_docker_tx:
+                                    delta_tx = net_tx_total
+
+                                # Sanity check: prevent negative deltas if something weird happens
+                                if delta_rx < 0: delta_rx = 0
+                                if delta_tx < 0: delta_tx = 0
+                                
+                                # 3. Update Total
+                                record.total_rx += delta_rx
+                                record.total_tx += delta_tx
+                                
+                                # 4. Update Reference
+                                record.last_docker_rx = net_rx_total
+                                record.last_docker_tx = net_tx_total
+                                
+                                db.commit()
+                                
+                                # 5. Use Persisted Total for Display
+                                final_rx = record.total_rx
+                                final_tx = record.total_tx
+                                
+                        except Exception as e:
+                            print(f"Persistence Error for {container.name}: {e}")
+                            # Fallback to raw values if DB fails
+                            pass
+
+                    return {
+                        "id": container.short_id,
+                        "name": container.name,
+                        "state": container.status,
+                        "cpu_percent": round(cpu_percent, 2),
+                        "memory_usage": mem_usage,
+                        "memory_limit": mem_limit,
+                        "memory_percent": round(mem_percent, 2),
+                        "net_rx": final_rx,
+                        "net_tx": final_tx,
                         "net_rx_speed": net_rx_speed, # Bytes/s
                         "net_tx_speed": net_tx_speed  # Bytes/s
                     }

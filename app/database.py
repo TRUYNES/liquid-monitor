@@ -27,6 +27,16 @@ class SystemMetric(Base):
     net_sent_speed = Column(Float)  # KB/s
     net_recv_speed = Column(Float)  # KB/s
 
+class ContainerTraffic(Base):
+    __tablename__ = "container_traffic"
+    
+    name = Column(String, primary_key=True, index=True)
+    total_rx = Column(Float, default=0.0) # Bytes
+    total_tx = Column(Float, default=0.0) # Bytes
+    last_docker_rx = Column(Float, default=0.0) # Raw Docker Bytes
+    last_docker_tx = Column(Float, default=0.0) # Raw Docker Bytes
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 
