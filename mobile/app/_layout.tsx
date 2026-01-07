@@ -1,12 +1,13 @@
+import React, { useEffect, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
 import 'react-native-reanimated';
 import '../global.css';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setApiBaseUrl } from '@/services/api';
 import { useColorScheme } from '@/components/useColorScheme';
 
 export {
@@ -28,6 +29,10 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
+  const router = useRouter();
+  const segments = useSegments();
+  const [isReady, setIsReady] = useState(false);
+
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
@@ -39,7 +44,44 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  if (!loaded) {
+  // Check for server URL on load
+  useEffect(() => {
+    const checkServerUrl = async () => {
+      try {
+        const url = await AsyncStorage.getItem('server_url');
+        if (url) {
+          setApiBaseUrl(url);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsReady(true);
+      }
+    };
+    checkServerUrl();
+  }, []);
+
+  // Protected Route Logic
+  useEffect(() => {
+    if (!isReady || !loaded) return;
+
+    const inConnectGroup = segments[0] === 'connect';
+
+    const checkAuth = async () => {
+      const url = await AsyncStorage.getItem('server_url');
+      if (!url && !inConnectGroup) {
+        // Redirect to connect screen if no URL
+        router.replace('/connect');
+      } else if (url && inConnectGroup) {
+        // Redirect to dashboard if URL exists
+        router.replace('/(tabs)');
+      }
+    };
+
+    checkAuth();
+  }, [isReady, loaded, segments]);
+
+  if (!loaded || !isReady) {
     return null;
   }
 
@@ -53,6 +95,7 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="connect" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>

@@ -1,12 +1,19 @@
 import axios from 'axios';
 
-// Replace with your local IP if this changes
-const API_URL = 'https://data.noktafikir.com';
+// Default URL (can be overwritten)
+const DEFAULT_API_URL = 'https://data.noktafikir.com';
 
 const api = axios.create({
-    baseURL: API_URL,
+    baseURL: DEFAULT_API_URL,
     timeout: 5000,
 });
+
+export const setApiBaseUrl = (url: string) => {
+    // Ensure no trailing slash
+    const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+    api.defaults.baseURL = cleanUrl;
+    console.log('API Base URL set to:', cleanUrl);
+};
 
 export const getStats = async () => {
     try {
