@@ -164,7 +164,7 @@ function initNetworkChart() {
                     pointHoverBorderWidth: 2
                 },
                 {
-                    label: 'Yükleme',
+                    label: 'Gönderme',
                     data: [],
                     borderColor: '#22d3ee',
                     backgroundColor: 'rgba(34, 211, 238, 0.08)',
