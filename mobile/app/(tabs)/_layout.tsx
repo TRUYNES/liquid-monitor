@@ -29,17 +29,29 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Monitor',
-          tabBarIcon: ({ color }) => <TabBarIcon name="bar-chart" color={color} />,
-          headerShown: false, // Hide header since we have custom one in screen
+          title: 'Tab One',
+          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          headerRight: () => (
+            <Link href="/modal" asChild>
+              <Pressable>
+                {({ pressed }) => (
+                  <FontAwesome
+                    name="info-circle"
+                    size={25}
+                    color={Colors[colorScheme ?? 'light'].text}
+                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
+                  />
+                )}
+              </Pressable>
+            </Link>
+          ),
         }}
       />
       <Tabs.Screen
         name="two"
         options={{
-          title: 'Services',
-          tabBarIcon: ({ color }) => <TabBarIcon name="server" color={color} />,
-          headerShown: false,
+          title: 'Tab Two',
+          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
         }}
       />
     </Tabs>

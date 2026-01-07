@@ -667,8 +667,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHistory();
     updateNetworkHistory();
     updateContainers();
-    setInterval(updateStats, 1000);
-    setInterval(updateContainers, 2000);
+    setInterval(updateStats, 5000);
+    setInterval(updateContainers, 5000);
     setInterval(updateHistory, 60000);
     setInterval(updateNetworkHistory, 60000);
 });
