@@ -31,7 +31,7 @@ export default function DashboardScreen() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 2000); // Poll every 2s for sync
+        const interval = setInterval(fetchData, 1000); // Poll every 1s for real-time feel
         return () => clearInterval(interval);
     }, []);
 
@@ -73,7 +73,13 @@ export default function DashboardScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
                 }
             >
-                <Text className="text-3xl font-bold text-white mb-6">LiquidMonitor</Text>
+                <View className="flex-row justify-between items-center mb-6">
+                    <Text className="text-3xl font-bold text-white">LiquidMonitor</Text>
+                    <View className="flex-row items-center bg-green-500/20 px-3 py-1 rounded-full border border-green-500/30">
+                        <View className="w-2 h-2 rounded-full bg-green-500 mr-2 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                        <Text className="text-green-400 text-xs font-bold tracking-wider">CANLI</Text>
+                    </View>
+                </View>
 
                 {/* Stats Grid */}
                 <View className="flex-row flex-wrap justify-between">
