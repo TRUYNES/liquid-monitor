@@ -491,9 +491,10 @@ async function updateContainers() {
                 net_tx: c.net_tx
             };
 
-            // Use derived speed if valid, otherwise fallback (or 0)
-            const dlSpeed = derivedRxSpeed;
-            const ulSpeed = derivedTxSpeed;
+            // Use derived speed if available (client-side), otherwise fallback to backend speed (server-side)
+            // This ensures instant visibility on load/refresh while maintaining live updates
+            const dlSpeed = derivedRxSpeed > 0 ? derivedRxSpeed : (Number(c.net_rx_speed) || 0);
+            const ulSpeed = derivedTxSpeed > 0 ? derivedTxSpeed : (Number(c.net_tx_speed) || 0);
 
             // Debug
             // if (derivedTxSpeed > 0) console.log(c.name, "TX Speed:", derivedTxSpeed);
