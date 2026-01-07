@@ -199,27 +199,20 @@
         </div>
 
         <!-- Charts Section: Main History + Network Traffic -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Charts Section: Main History Full Width -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <!-- Main History Chart (CPU, RAM, Temp) -->
-            <div class="glass-card p-6">
+            <div class="glass-card p-6 lg:col-span-3">
                 <h3 class="text-lg font-bold mb-6">24 Saatlik Geçmiş (CPU, RAM, Sıcaklık)</h3>
                 <div class="h-80 w-full relative">
                     <canvas id="historyChart"></canvas>
                 </div>
             </div>
-
-            <!-- Network Traffic Chart -->
-            <div class="glass-card p-6">
-                <h3 class="text-lg font-bold mb-6">Ağ Trafiği (24 Saat)</h3>
-                <div class="h-80 w-full relative">
-                    <canvas id="networkChart"></canvas>
-                </div>
-            </div>
         </div>
 
-        <!-- Network Stats & Processes Section -->
+        <!-- Network Section: Stats Card + Chart -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <!-- Network Stats (1 Col) -->
+            <!-- Network Stats (1 Col) - Moved here -->
             <div class="glass-card lg:col-span-1">
                 <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
                     <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,6 +240,17 @@
                 </div>
             </div>
 
+            <!-- Network Traffic Chart (2 Cols) -->
+            <div class="glass-card p-6 lg:col-span-2">
+                <h3 class="text-lg font-bold mb-6">Ağ Trafiği (24 Saat)</h3>
+                <div class="h-80 w-full relative">
+                    <canvas id="networkChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Containers Table Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <!-- Containers Table (Full Width) -->
             <div class="glass-card lg:col-span-3 overflow-hidden">
                 <div class="flex justify-between items-center mb-4 px-2">
@@ -270,7 +274,10 @@
                                     onclick="sortContainers('mem')">RAM % ↕</th>
                                 <th scope="col"
                                     class="px-4 py-3 text-right cursor-pointer hover:text-white transition-colors"
-                                    onclick="sortContainers('net')">Net I/O ↕</th>
+                                    onclick="sortContainers('net_down')">⬇ İndirme ↕</th>
+                                <th scope="col"
+                                    class="px-4 py-3 text-right cursor-pointer hover:text-white transition-colors"
+                                    onclick="sortContainers('net_up')">⬆ Gönderme ↕</th>
                                 <th scope="col"
                                     class="px-4 py-3 text-right cursor-pointer hover:text-white transition-colors"
                                     onclick="sortContainers('ram_usage')">RAM Detay ↕</th>

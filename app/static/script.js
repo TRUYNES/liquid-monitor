@@ -471,7 +471,8 @@ function renderContainers() {
             case 'state': valA = a.state; valB = b.state; break;
             case 'cpu': valA = a.cpu_percent; valB = b.cpu_percent; break;
             case 'mem': valA = a.memory_percent; valB = b.memory_percent; break;
-            case 'net': valA = (a.net_rx || 0) + (a.net_tx || 0); valB = (b.net_rx || 0) + (b.net_tx || 0); break;
+            case 'net_down': valA = a.net_rx || 0; valB = b.net_rx || 0; break;
+            case 'net_up': valA = a.net_tx || 0; valB = b.net_tx || 0; break;
             case 'ram_usage': valA = a.memory_usage || 0; valB = b.memory_usage || 0; break;
             default: valA = a.cpu_percent; valB = b.cpu_percent;
         }
@@ -510,6 +511,8 @@ function renderContainers() {
                 </td>
                 <td class="px-4 py-3 text-right font-mono text-xs text-gray-400">
                     <div>↓ ${(c.net_rx / 1024 / 1024).toFixed(1)} MB</div>
+                </td>
+                <td class="px-4 py-3 text-right font-mono text-xs text-gray-400">
                     <div>↑ ${(c.net_tx / 1024 / 1024).toFixed(1)} MB</div>
                 </td>
                 <td class="px-4 py-3 text-right font-mono text-xs text-gray-400">
