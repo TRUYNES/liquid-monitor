@@ -348,13 +348,13 @@ async function updateStats() {
         document.getElementById('peak-up').innerHTML = `${(peaks.net_up_peak.value / 1024).toFixed(2)} MB/s <span class="font-bold ml-1">${time}</span>`;
 
         // Totals (sum of speeds KB/s * 5s interval = Total KB)
-        // Then KB -> GB ( / 1024 / 1024 / 1024 )
+        // Then KB -> GB ( / 1024 / 1024 )
         if (peaks.net_total_down !== undefined) {
-            const totalDownGB = (peaks.net_total_down * 5) / (1024 * 1024 * 1024); // speed(KB/s) * 5s -> KB -> MB -> GB
+            const totalDownGB = (peaks.net_total_down * 5) / (1024 * 1024); // speed(KB/s) * 5s -> KB -> MB -> GB
             document.getElementById('total-down-24h').innerText = `${totalDownGB.toFixed(2)} GB`;
         }
         if (peaks.net_total_up !== undefined) {
-            const totalUpGB = (peaks.net_total_up * 5) / (1024 * 1024 * 1024);
+            const totalUpGB = (peaks.net_total_up * 5) / (1024 * 1024);
             document.getElementById('total-up-24h').innerText = `${totalUpGB.toFixed(2)} GB`;
         }
 
