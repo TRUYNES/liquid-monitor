@@ -320,10 +320,7 @@ class SystemMonitor:
                                 last_docker_tx=net_tx_total
                             )
                             db.add(record)
-                            db.commit()
-                            # Display Current
-                            # c['net_rx'] = net_rx_total
-                            # c['net_tx'] = net_tx_total
+                            # db.commit() deferred
                         else:
                             # Calculate Delta
                             delta_rx = net_rx_total - record.last_docker_rx
@@ -346,7 +343,7 @@ class SystemMonitor:
                             record.last_docker_rx = net_rx_total
                             record.last_docker_tx = net_tx_total
                             
-                            db.commit()
+                            # db.commit() deferred
                             
                             # Update Display Value to Persisted Total
                             c['net_rx'] = record.total_rx
@@ -355,6 +352,12 @@ class SystemMonitor:
                     except Exception as e:
                        # print(f"Persistence Error for {name}: {e}")
                        pass
+            
+            try:
+                db.commit()
+            except Exception as e:
+                # print(f"Commit Error: {e}")
+                db.rollback()
         
         return containers_data
 
