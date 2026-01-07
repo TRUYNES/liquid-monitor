@@ -301,6 +301,7 @@ class SystemMonitor:
         """
         Manually scan for specific system services (Tailscale, Cloudflare)
         and format them as 'containers' for the UI.
+        Optimization: Only scan full process list every 30 seconds.
         """
         services = []
         target_procs = {
@@ -308,6 +309,33 @@ class SystemMonitor:
             'cloudflared': 'Cloudflare'
         }
         
+        # Initialize cache for process PIDs
+        if not hasattr(self, '_service_pid_cache'):
+            self._service_pid_cache = {}
+            self._last_service_scan = 0
+            
+        current_time = time.time()
+        
+        # Full scan every 30 seconds to find new/restarted processes
+        if current_time - self._last_service_scan > 30.0:
+            self._service_pid_cache = {} # Clear old cache
+            try:
+                # Scan all processes
+                for proc in psutil.process_iter(['pid', 'name']):
+                    try:
+                        p_name = proc.info['name']
+                        for t_key, t_display in target_procs.items():
+                            if t_key in p_name:
+                                # Found a target service, store PID and Display Name
+                                self._service_pid_cache[proc.pid] = t_display
+                                break
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+                self._last_service_scan = current_time
+            except Exception as e:
+                print(f"Service scan error: {e}")
+
+        # Fetch stats for cached PIDs (Lightweight operation)
         # Network stats for Tailscale interface
         ts_rx = 0
         ts_tx = 0
@@ -319,62 +347,53 @@ class SystemMonitor:
         except:
             pass
 
-        # Scan processes
-        for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info']):
+        for pid, matched_name in self._service_pid_cache.items():
             try:
-                p_name = proc.info['name']
-                # Match targets
-                matched_name = None
-                for t_key, t_display in target_procs.items():
-                    if t_key in p_name:
-                        matched_name = t_display
-                        break
+                proc = psutil.Process(pid)
+                # Get fresh stats
+                with proc.oneshot():
+                    cpu = proc.cpu_percent()
+                    mem = proc.memory_info().rss
                 
-                if matched_name:
-                    # Collect data
-                    mem_usage = proc.info['memory_info'].rss
-                    # Mocking totals for now or utilizing interface stats
-                    net_rx = ts_rx if matched_name == 'Tailscale' else 0
-                    net_tx = ts_tx if matched_name == 'Tailscale' else 0
-                    
-                    # Calculate speed for Tailscale
-                    # We reuse the container cache logic but with a special ID prefix
-                    svc_id = f"sys_{proc.info['pid']}"
-                    
-                    net_rx_speed = 0.0
-                    net_tx_speed = 0.0
-                    current_time = time.time()
-                    
-                    # Use existing lock/cache structure from get_containers if possible, 
-                    # or just simple diff if we want to be safe. 
-                    # Let's reuse the lock for thread safety on the cache dict.
-                    if hasattr(self, '_container_lock'):
-                        with self._container_lock:
-                            if svc_id in self._container_net_cache:
-                                last = self._container_net_cache[svc_id]
-                                t_diff = current_time - last['time']
-                                if t_diff > 0:
-                                    net_rx_speed = max(0, (net_rx - last['rx']) / t_diff)
-                                    net_tx_speed = max(0, (net_tx - last['tx']) / t_diff)
-                            
-                            self._container_net_cache[svc_id] = {
-                                'rx': net_rx, 'tx': net_tx, 'time': current_time
-                            }
+                # Mocking totals for now or utilizing interface stats
+                net_rx = ts_rx if matched_name == 'Tailscale' else 0
+                net_tx = ts_tx if matched_name == 'Tailscale' else 0
+                
+                # Calculate speed for Tailscale
+                svc_id = f"sys_{pid}"
+                net_rx_speed = 0.0
+                net_tx_speed = 0.0
+                
+                if hasattr(self, '_container_lock'):
+                    with self._container_lock:
+                        if svc_id in self._container_net_cache:
+                            last = self._container_net_cache[svc_id]
+                            t_diff = current_time - last['time']
+                            if t_diff > 0:
+                                net_rx_speed = max(0, (net_rx - last['rx']) / t_diff)
+                                net_tx_speed = max(0, (net_tx - last['tx']) / t_diff)
+                        
+                        self._container_net_cache[svc_id] = {
+                            'rx': net_rx, 'tx': net_tx, 'time': current_time
+                        }
 
-                    services.append({
-                        "id": str(proc.info['pid']), # Use PID as fake ID
-                        "name": matched_name,
-                        "state": "running", # Process is found, so it's running
-                        "cpu_percent": proc.info['cpu_percent'] or 0.0,
-                        "memory_usage": mem_usage,
-                        "memory_limit": psutil.virtual_memory().total, # Show total system ram as limit
-                        "memory_percent": round((mem_usage / psutil.virtual_memory().total) * 100, 2),
-                        "net_rx": net_rx,
-                        "net_tx": net_tx,
-                        "net_rx_speed": net_rx_speed,
-                        "net_tx_speed": net_tx_speed
-                    })
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                services.append({
+                    "id": str(pid),
+                    "name": matched_name,
+                    "state": "running",
+                    "cpu_percent": cpu or 0.0,
+                    "memory_usage": mem,
+                    "memory_limit": psutil.virtual_memory().total,
+                    "memory_percent": round((mem / psutil.virtual_memory().total) * 100, 2),
+                    "net_rx": net_rx,
+                    "net_tx": net_tx,
+                    "net_rx_speed": net_rx_speed,
+                    "net_tx_speed": net_tx_speed
+                })
+            except (psutil.NoSuchProcess, psutil.ZombieProcess):
+                # Process died, will be removed from cache on next full scan
+                pass
+            except Exception:
                 pass
         
         return services
