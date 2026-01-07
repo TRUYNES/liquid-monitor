@@ -133,8 +133,16 @@ class SystemMonitor:
             return []
         
         containers_data = []
+        
+        # Ensure lock exists (for thread safety with parallel execution)
+        if not hasattr(self, '_container_lock'):
+            self._container_lock = threading.Lock()
+        if not hasattr(self, '_container_net_cache'):
+            self._container_net_cache = {}
+
         try:
             containers = self.docker_client.containers.list()
+            current_time = time.time()
             
             # Helper function to process a single container
             def process_container(container):
@@ -167,12 +175,39 @@ class SystemMonitor:
                             mem_percent = (mem_usage / mem_limit) * 100.0
 
                     # Network I/O
-                    net_rx = 0
-                    net_tx = 0
+                    net_rx_total = 0
+                    net_tx_total = 0
                     if 'networks' in stats:
                         for iface in stats['networks']:
-                            net_rx += stats['networks'][iface]['rx_bytes']
-                            net_tx += stats['networks'][iface]['tx_bytes']
+                            net_rx_total += stats['networks'][iface]['rx_bytes']
+                            net_tx_total += stats['networks'][iface]['tx_bytes']
+
+                    # Calculate Network Speed
+                    # We need to lock while reading/writing the shared cache
+                    net_rx_speed = 0.0
+                    net_tx_speed = 0.0
+                    
+                    with self._container_lock:
+                        cid = container.id
+                        if cid in self._container_net_cache:
+                            last_stat = self._container_net_cache[cid]
+                            time_diff = current_time - last_stat['time']
+                            if time_diff > 0:
+                                rx_diff = net_rx_total - last_stat['rx']
+                                tx_diff = net_tx_total - last_stat['tx']
+                                # Handle resets/overflows
+                                if rx_diff < 0: rx_diff = 0
+                                if tx_diff < 0: tx_diff = 0
+                                
+                                net_rx_speed = rx_diff / time_diff # Bytes/s
+                                net_tx_speed = tx_diff / time_diff # Bytes/s
+                        
+                        # Update cache
+                        self._container_net_cache[cid] = {
+                            'rx': net_rx_total, 
+                            'tx': net_tx_total, 
+                            'time': current_time
+                        }
 
                     return {
                         "id": container.short_id,
@@ -182,8 +217,10 @@ class SystemMonitor:
                         "memory_usage": mem_usage,
                         "memory_limit": mem_limit,
                         "memory_percent": round(mem_percent, 2),
-                        "net_rx": net_rx,
-                        "net_tx": net_tx
+                        "net_rx": net_rx_total,
+                        "net_tx": net_tx_total,
+                        "net_rx_speed": net_rx_speed, # Bytes/s
+                        "net_tx_speed": net_tx_speed  # Bytes/s
                     }
                 except Exception as e:
                     # print(f"Error getting stats for {container.name}: {e}")
@@ -197,11 +234,12 @@ class SystemMonitor:
                         "memory_percent": 0.0,
                         "net_rx": 0,
                         "net_tx": 0,
+                        "net_rx_speed": 0,
+                        "net_tx_speed": 0,
                         "error": str(e)
                     }
 
             # Use ThreadPoolExecutor for parallel processing
-            # 29 containers sequentially takes ~3-5s. Parallel takes <1s.
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
                 results = list(executor.map(process_container, containers))

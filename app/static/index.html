@@ -223,18 +223,31 @@
                     Ağ Trafiği
                 </h3>
                 <div class="space-y-4">
-                    <div class="bg-gray-800/30 rounded-xl p-4 flex justify-between items-center">
-                        <span class="text-gray-400 text-sm">İndirme (Down)</span>
-                        <div class="text-right">
-                            <div class="text-xl font-bold text-green-400" id="net-down">0 MB/s</div>
-                            <div class="text-xs text-gray-500">Pik: <span id="peak-down">0</span></div>
+                    <div class="bg-gray-800/30 rounded-xl p-4 relative overflow-hidden group">
+                        <div class="flex justify-between items-center z-10 relative">
+                            <span class="text-gray-400 text-sm">İndirme (Down)</span>
+                            <div class="text-right">
+                                <div class="text-xl font-bold text-green-400" id="net-down">0 MB/s</div>
+                                <div class="text-xs text-gray-500">Pik: <span id="peak-down">0</span></div>
+                            </div>
+                        </div>
+                        <div id="top-dl-container"
+                            class="hidden mt-2 text-xs text-green-300/80 font-mono text-right flex items-center justify-end gap-1">
+                            <!-- Will be filled by JS: En çok: nextcloud (2 MB/s) -->
                         </div>
                     </div>
-                    <div class="bg-gray-800/30 rounded-xl p-4 flex justify-between items-center">
-                        <span class="text-gray-400 text-sm">Gönderme (Up)</span>
-                        <div class="text-right">
-                            <div class="text-xl font-bold text-blue-400" id="net-up">0 MB/s</div>
-                            <div class="text-xs text-gray-500">Pik: <span id="peak-up">0</span></div>
+
+                    <div class="bg-gray-800/30 rounded-xl p-4 relative overflow-hidden group">
+                        <div class="flex justify-between items-center z-10 relative">
+                            <span class="text-gray-400 text-sm">Gönderme (Up)</span>
+                            <div class="text-right">
+                                <div class="text-xl font-bold text-blue-400" id="net-up">0 MB/s</div>
+                                <div class="text-xs text-gray-500">Pik: <span id="peak-up">0</span></div>
+                            </div>
+                        </div>
+                        <div id="top-ul-container"
+                            class="hidden mt-2 text-xs text-blue-300/80 font-mono text-right flex items-center justify-end gap-1">
+                            <!-- Will be filled by JS -->
                         </div>
                     </div>
                 </div>

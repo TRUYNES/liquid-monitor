@@ -455,6 +455,49 @@ async function updateContainers() {
         const activeCount = data.filter(c => c.state === 'running').length;
         document.getElementById('container-count').innerText = activeCount;
 
+        // Check for top network users (> 1 Mbps approx 125 KB/s)
+        const THRESHOLD_BPS = 125000; // 1 Mbps in Bytes/s
+
+        let maxDown = 0;
+        let topDownContainer = null;
+        let maxUp = 0;
+        let topUpContainer = null;
+
+        data.forEach(c => {
+            if (c.net_rx_speed > maxDown) {
+                maxDown = c.net_rx_speed;
+                topDownContainer = c;
+            }
+            if (c.net_tx_speed > maxUp) {
+                maxUp = c.net_tx_speed;
+                topUpContainer = c;
+            }
+        });
+
+        // Update UI for Top Downloader
+        const downEl = document.getElementById('top-dl-container');
+        if (downEl) {
+            if (topDownContainer && maxDown > THRESHOLD_BPS) {
+                const speedMB = (maxDown / 1024 / 1024).toFixed(2);
+                downEl.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> ${topDownContainer.name} (${speedMB} MB/s)`;
+                downEl.classList.remove('hidden');
+            } else {
+                downEl.classList.add('hidden');
+            }
+        }
+
+        // Update UI for Top Uploader
+        const upEl = document.getElementById('top-ul-container');
+        if (upEl) {
+            if (topUpContainer && maxUp > THRESHOLD_BPS) {
+                const speedMB = (maxUp / 1024 / 1024).toFixed(2);
+                upEl.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> ${topUpContainer.name} (${speedMB} MB/s)`;
+                upEl.classList.remove('hidden');
+            } else {
+                upEl.classList.add('hidden');
+            }
+        }
+
         renderContainers();
     } catch (e) {
         console.error("Container fetch error", e);
