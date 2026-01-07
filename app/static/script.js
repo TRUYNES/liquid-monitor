@@ -517,14 +517,24 @@ async function updateStats() {
     }
 }
 
-let currentPeriod = '24h';
+let historyPeriod = '24h';
+let networkPeriod = '24h';
 
-function setPeriod(period) {
-    if (currentPeriod === period) return;
-    currentPeriod = period;
+function setChartPeriod(type, period) {
+    if (type === 'history') {
+        if (historyPeriod === period) return;
+        historyPeriod = period;
+        updateHistory();
+    } else if (type === 'network') {
+        if (networkPeriod === period) return;
+        networkPeriod = period;
+        updateNetworkHistory();
+    }
 
-    // Update UI buttons
-    document.querySelectorAll('.period-btn').forEach(btn => {
+    // Update UI buttons specifically for this chart type
+    // We assume buttons have data-type="history" or "network" and data-period="..."
+    const buttons = document.querySelectorAll(`.period-btn[data-type="${type}"]`);
+    buttons.forEach(btn => {
         if (btn.dataset.period === period) {
             btn.classList.add('bg-blue-500', 'text-white', 'shadow-sm');
             btn.classList.remove('text-gray-400', 'hover:text-white', 'bg-transparent');
@@ -533,15 +543,11 @@ function setPeriod(period) {
             btn.classList.add('text-gray-400', 'hover:text-white', 'bg-transparent');
         }
     });
-
-    // Refresh charts
-    updateHistory();
-    updateNetworkHistory();
 }
 
 async function updateHistory() {
     try {
-        const res = await fetch(`/api/stats/history?period=${currentPeriod}`);
+        const res = await fetch(`/api/stats/history?period=${historyPeriod}`);
         const data = await res.json();
 
         // Downsample for performance if needed (Backend handles main downsampling now, but extra safety)
@@ -552,7 +558,7 @@ async function updateHistory() {
             const ts = d.timestamp.endsWith('Z') ? d.timestamp : d.timestamp + 'Z';
             const date = new Date(ts);
 
-            if (currentPeriod === '24h') {
+            if (historyPeriod === '24h') {
                 return date.toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit' });
             } else {
                 return date.toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -588,7 +594,7 @@ async function updateHistory() {
 // Update network traffic history
 async function updateNetworkHistory() {
     try {
-        const res = await fetch(`/api/stats/history?period=${currentPeriod}`);
+        const res = await fetch(`/api/stats/history?period=${networkPeriod}`);
         const data = await res.json();
 
         const displayedData = data.length > 500 ? data.filter((_, i) => i % Math.ceil(data.length / 500) === 0) : data;
@@ -597,7 +603,7 @@ async function updateNetworkHistory() {
             const ts = d.timestamp.endsWith('Z') ? d.timestamp : d.timestamp + 'Z';
             const date = new Date(ts);
 
-            if (currentPeriod === '24h') {
+            if (networkPeriod === '24h') {
                 return date.toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit' });
             } else {
                 return date.toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
