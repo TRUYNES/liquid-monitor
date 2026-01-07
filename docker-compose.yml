@@ -6,8 +6,6 @@ services:
     build: https://github.com/TRUYNES/liquid-monitor.git#main
     container_name: liquid-monitor
     restart: unless-stopped
-    ports:
-      - "9876:3000"
     volumes:
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -17,5 +15,10 @@ services:
     environment:
       - PROCFS_PATH=/host/proc
       - SYSFS_PATH=/host/sys
+    # Host Mode optimization for Raspberry Pi / Linux
+    network_mode: host
+    pid: host
+    # Port is handled by app since we are on host network (default 8000 or override via command)
+    command: uvicorn app.main:app --host 0.0.0.0 --port 9876
     # Privileged mode helps with accessing hardware sensors (temp)
     privileged: true
