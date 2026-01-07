@@ -268,8 +268,12 @@
                                     onclick="sortContainers('cpu')">CPU % ↕</th>
                                 <th scope="col" class="px-4 py-3 cursor-pointer hover:text-white transition-colors"
                                     onclick="sortContainers('mem')">RAM % ↕</th>
-                                <th scope="col" class="px-4 py-3 text-right">Net I/O</th>
-                                <th scope="col" class="px-4 py-3 text-right">RAM Detay</th>
+                                <th scope="col"
+                                    class="px-4 py-3 text-right cursor-pointer hover:text-white transition-colors"
+                                    onclick="sortContainers('net')">Net I/O ↕</th>
+                                <th scope="col"
+                                    class="px-4 py-3 text-right cursor-pointer hover:text-white transition-colors"
+                                    onclick="sortContainers('ram_usage')">RAM Detay ↕</th>
                             </tr>
                         </thead>
                         <tbody id="container-list" class="divide-y divide-gray-700/50">
