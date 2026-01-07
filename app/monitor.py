@@ -32,6 +32,12 @@ class SystemMonitor:
         except Exception as e:
             print(f"Docker client init failed: {e}")
             self.docker_client = None
+        
+        # Prime CPU usage (first call always returns 0)
+        try:
+            psutil.cpu_percent(interval=None)
+        except:
+            pass
 
     def get_cpu_usage(self):
         return psutil.cpu_percent(interval=None)

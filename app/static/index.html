@@ -103,9 +103,10 @@
                     </div>
                 </div>
                 <!-- Peak Indicator -->
-                <div class="text-xs text-gray-400 flex justify-between items-center">
-                    <span>Pik (24s):</span>
-                    <span id="cpu-peak" class="text-blue-300 font-mono">0%</span>
+                <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-700/30">
+                    <span class="text-xs text-gray-500">Pik (24s)</span>
+                    <span id="cpu-peak"
+                        class="px-2 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-mono">0%</span>
                 </div>
                 <div class="w-full bg-gray-700/50 rounded-full h-1.5 mt-3">
                     <div id="cpu-bar" class="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
@@ -128,9 +129,10 @@
                         </svg>
                     </div>
                 </div>
-                <div class="text-xs text-gray-400 flex justify-between items-center">
-                    <span>Pik (24s):</span>
-                    <span id="ram-peak" class="text-purple-300 font-mono">0%</span>
+                <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-700/30">
+                    <span class="text-xs text-gray-500">Pik (24s)</span>
+                    <span id="ram-peak"
+                        class="px-2 py-1 rounded bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-mono">0%</span>
                 </div>
                 <div class="w-full bg-gray-700/50 rounded-full h-1.5 mt-3">
                     <div id="ram-bar" class="bg-purple-500 h-1.5 rounded-full transition-all duration-500"
@@ -152,9 +154,10 @@
                         </svg>
                     </div>
                 </div>
-                <div class="text-xs text-gray-400 flex justify-between items-center">
-                    <span>Pik (24s):</span>
-                    <span id="temp-peak" class="text-red-300 font-mono">0°C</span>
+                <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-700/30">
+                    <span class="text-xs text-gray-500">Pik (24s)</span>
+                    <span id="temp-peak"
+                        class="px-2 py-1 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-mono">0°C</span>
                 </div>
                 <div class="w-full bg-gray-700/50 rounded-full h-1.5 mt-3">
                     <div id="temp-bar" class="bg-red-500 h-1.5 rounded-full transition-all duration-500"
@@ -228,7 +231,10 @@
                             <span class="text-gray-400 text-sm">İndirme (Down)</span>
                             <div class="text-right">
                                 <div class="text-xl font-bold text-green-400" id="net-down">0 MB/s</div>
-                                <div class="text-xs text-gray-500">Pik: <span id="peak-down">0</span></div>
+                                <div class="text-xs text-gray-500 mt-1 flex justify-end gap-1 items-center">
+                                    Pik: <span id="peak-down"
+                                        class="px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 font-mono">0</span>
+                                </div>
                             </div>
                         </div>
                         <div id="top-dl-container"
@@ -242,7 +248,10 @@
                             <span class="text-gray-400 text-sm">Gönderme (Up)</span>
                             <div class="text-right">
                                 <div class="text-xl font-bold text-blue-400" id="net-up">0 MB/s</div>
-                                <div class="text-xs text-gray-500">Pik: <span id="peak-up">0</span></div>
+                                <div class="text-xs text-gray-500 mt-1 flex justify-end gap-1 items-center">
+                                    Pik: <span id="peak-up"
+                                        class="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">0</span>
+                                </div>
                             </div>
                         </div>
                         <div id="top-ul-container"
