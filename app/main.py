@@ -42,7 +42,7 @@ async def collect_metrics_loop():
                 metric = SystemMetric(
                     cpu_usage=data['cpu_usage'],
                     ram_usage=data['ram_usage'],
-                    disk_usage=data['disk_percent'],
+                    disk_usage=data['disk_usage'], # Updated key
                     net_sent_speed=data['net_sent_speed'],
                     net_recv_speed=data['net_recv_speed'],
                     cpu_temp=data.get('cpu_temp')

@@ -168,10 +168,10 @@ class SystemMonitor:
              add_alert('ram', data['ram_usage'], 'warning', "RAM kullanımı yüksek: %{value}")
 
         # Disk
-        if data['disk_percent'] > THRESHOLDS['disk']['critical']:
-             add_alert('disk', data['disk_percent'], 'critical', "Disk alanı TÜKENİYOR: %{value}")
-        elif data['disk_percent'] > THRESHOLDS['disk']['warning']:
-             add_alert('disk', data['disk_percent'], 'warning', "Disk doluluk oranı yüksek: %{value}")
+        if data['disk_usage'] > THRESHOLDS['disk']['critical']:
+             add_alert('disk', data['disk_usage'], 'critical', "Disk alanı TÜKENİYOR: %{value}")
+        elif data['disk_usage'] > THRESHOLDS['disk']['warning']:
+             add_alert('disk', data['disk_usage'], 'warning', "Disk doluluk oranı yüksek: %{value}")
              
         # Temp
         if data.get('cpu_temp') and data['cpu_temp'] > THRESHOLDS['temp']['critical']:
@@ -211,10 +211,10 @@ class SystemMonitor:
         data = {
             "cpu_usage": self.get_cpu_usage(),
             "ram_usage": self.get_ram_usage(),
-            "disk_percent": disk.percent,
-            "disk_total": disk.total,
-            "disk_used": disk.used,
-            "disk_free": disk.free,
+            "disk_usage": disk.percent,
+            "disk_total_gb": round(disk.total / (1024**3), 2),
+            "disk_used_gb": round(disk.used / (1024**3), 2),
+            "disk_free_gb": round(disk.free / (1024**3), 2),
             "net_sent_speed": upload,
             "net_recv_speed": download,
             "cpu_temp": self.get_cpu_temp(),
