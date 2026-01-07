@@ -648,6 +648,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initChart();
     initNetworkChart();
+
+    // Start live clock
+    function updateClock() {
+        const now = new Date();
+        const clockEl = document.getElementById('system-clock');
+        if (clockEl) {
+            clockEl.innerText = now.toLocaleString('tr-TR', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+        }
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
     updateStats();
     updateHistory();
     updateNetworkHistory();
