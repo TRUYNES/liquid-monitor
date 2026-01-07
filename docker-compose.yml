@@ -2,7 +2,8 @@ version: '3.8'
 
 services:
   liquid-monitor:
-    build: .
+    # Dockge'nin kodu çekip build edebilmesi için GitHub Repo adresini veriyoruz
+    build: https://github.com/TRUYNES/liquid-monitor.git#main
     container_name: liquid-monitor
     restart: unless-stopped
     ports:
