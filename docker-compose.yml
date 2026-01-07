@@ -7,7 +7,7 @@ services:
     container_name: liquid-monitor
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "9876:3000"
     volumes:
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
