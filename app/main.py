@@ -94,6 +94,12 @@ def get_peaks(db: Session = Depends(get_db)):
         "temp_peak": get_max(SystemMetric.cpu_temp),
         "net_down_peak": get_max(SystemMetric.net_recv_speed),
         "net_up_peak": get_max(SystemMetric.net_sent_speed),
+        "net_total_down": db.query(func.sum(SystemMetric.net_recv_speed)).filter(SystemMetric.timestamp > cutoff).scalar() or 0.0,
+        "net_total_up": db.query(func.sum(SystemMetric.net_sent_speed)).filter(SystemMetric.timestamp > cutoff).scalar() or 0.0,
+        # Note: net_recv_speed/sent_speed are in KB/s. Each record is 5 seconds approx.
+        # But wait, monitor.collect() returns KB/s which is "average speed over the last check interval".
+        # If we query every 5 seconds, speed * 5 = total KB in that interval.
+        # So sum(speed) * 5 is roughly the total KB.
     }
 
 # Mount static files *after* defining API to avoid conflicts if root was mounted

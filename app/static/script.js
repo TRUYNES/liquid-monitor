@@ -344,17 +344,27 @@ async function updateStats() {
             const time = formatPeakTime(peaks.net_down_peak.timestamp);
             document.getElementById('peak-down').innerText = `${(peaks.net_down_peak.value / 1024).toFixed(2)} MB / s @${time} `;
         }
-        if (peaks.net_up_peak) {
-            const time = formatPeakTime(peaks.net_up_peak.timestamp);
-            document.getElementById('peak-up').innerText = `${(peaks.net_up_peak.value / 1024).toFixed(2)} MB / s @${time} `;
-        }
-
-        // Uptime
-        document.getElementById('uptime-display').innerText = formatTime(current.uptime);
-
-    } catch (e) {
-        console.error("Failed to fetch stats", e);
+        const time = formatPeakTime(peaks.net_up_peak.timestamp);
+        document.getElementById('peak-up').innerText = `${(peaks.net_up_peak.value / 1024).toFixed(2)} MB / s @${time} `;
     }
+
+        // Totals (sum of speeds KB/s * 5s interval = Total KB)
+        // Then KB -> GB ( / 1024 / 1024 / 1024 )
+        if (peaks.net_total_down !== undefined) {
+        const totalDownGB = (peaks.net_total_down * 5) / (1024 * 1024 * 1024); // speed(KB/s) * 5s -> KB -> MB -> GB
+        document.getElementById('total-down-24h').innerText = `${totalDownGB.toFixed(2)} GB`;
+    }
+    if (peaks.net_total_up !== undefined) {
+        const totalUpGB = (peaks.net_total_up * 5) / (1024 * 1024 * 1024);
+        document.getElementById('total-up-24h').innerText = `${totalUpGB.toFixed(2)} GB`;
+    }
+
+    // Uptime
+    document.getElementById('uptime-display').innerText = formatTime(current.uptime);
+
+} catch (e) {
+    console.error("Failed to fetch stats", e);
+}
 }
 
 async function updateHistory() {

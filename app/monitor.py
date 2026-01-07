@@ -158,8 +158,20 @@ class SystemMonitor:
                         if 'online_cpus' not in stats['cpu_stats'] and 'percpu_usage' in stats['cpu_stats']['cpu_usage']:
                              number_cpus = len(stats['cpu_stats']['cpu_usage']['percpu_usage'])
 
+                        # Normalize CPU percentage (0-100% per core vs Total System)
+                        # We want Total System % (0-100 max even with 4 cores)
+                        # The original formula calculates total usage across all cores (can > 100%)
+                        # To normalize: (delta / system_delta) * 100
                         if system_cpu_delta > 0 and cpu_delta > 0:
+                            # Formula for PER CORE usage: (cpu_delta / system_cpu_delta) * number_cpus * 100.0
+                            # Formula for SYSTEM TOTAL usage: (cpu_delta / system_cpu_delta) * 100.0
+                            # User expects 0-100% total, so we remove number_cpus multiplication for normalization
+                            # Or we can keep it and divide by number_cpus later.
+                            # Standard "docker stats" shows per-core (>100%), but user says it is "nonsense".
+                            # So we will normalize to System Total.
                             cpu_percent = (cpu_delta / system_cpu_delta) * number_cpus * 100.0
+                            # Clamp or Normalize? Let's Normalize to System Total (0-100)
+                            cpu_percent = (cpu_delta / system_cpu_delta) * 100.0
 
                     # Calculate Memory
                     mem_usage = 0
