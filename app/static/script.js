@@ -330,16 +330,32 @@ function showToast(title, message, type = 'warning') {
 
 function checkAlerts(data) {
     const now = Date.now();
+    let highestStatus = 'normal'; // normal, warning, critical
+    let statusMessage = 'Sistem Normal';
 
     const checkMetric = (key, value, name, unit) => {
-        if (now - lastAlertTime[key] < ALERT_COOLDOWN) return;
+        // Toast Checks (with cooldown)
+        if (now - lastAlertTime[key] >= ALERT_COOLDOWN) {
+            if (value >= 90) {
+                showToast(`${name} Kritik Seviyede!`, `%${value.toFixed(1)} kullanımı ile kritik seviyeye ulaştı.`, 'critical');
+                lastAlertTime[key] = now;
+            } else if (value >= 80) {
+                showToast(`${name} Uyarısı`, `%${value.toFixed(1)} kullanımı ile dikkat çekiyor.`, 'warning');
+                lastAlertTime[key] = now;
+            }
+        }
 
+        // Header Status Logic (Real-time, no cooldown)
         if (value >= 90) {
-            showToast(`${name} Kritik Seviyede!`, `%${value.toFixed(1)} kullanımı ile kritik seviyeye ulaştı.`, 'critical');
-            lastAlertTime[key] = now;
+            if (highestStatus !== 'critical') { // Critical overrides everything
+                highestStatus = 'critical';
+                statusMessage = `KRİTİK: ${name} %${value.toFixed(1)}`;
+            }
         } else if (value >= 80) {
-            showToast(`${name} Uyarısı`, `%${value.toFixed(1)} kullanımı ile dikkat çekiyor.`, 'warning');
-            lastAlertTime[key] = now;
+            if (highestStatus === 'normal') { // Warning overrides normal
+                highestStatus = 'warning';
+                statusMessage = `Uyarı: ${name} %${value.toFixed(1)}`;
+            }
         }
     };
 
@@ -348,18 +364,58 @@ function checkAlerts(data) {
 
     if (data.cpu_temp) {
         // Temperature logic: >85 Critical, >75 Warning
+        const temp = data.cpu_temp;
+
+        // Toast
         if (now - lastAlertTime.temp >= ALERT_COOLDOWN) {
-            if (data.cpu_temp >= 85) {
-                showToast(`Yüksek Sıcaklık!`, `${data.cpu_temp.toFixed(1)}°C ile işlemci çok ısındı.`, 'critical');
+            if (temp >= 85) {
+                showToast(`Yüksek Sıcaklık!`, `${temp.toFixed(1)}°C ile işlemci çok ısındı.`, 'critical');
                 lastAlertTime.temp = now;
-            } else if (data.cpu_temp >= 75) {
-                showToast(`Sıcaklık Artışı`, `${data.cpu_temp.toFixed(1)}°C sıcaklık seviyesi.`, 'warning');
+            } else if (temp >= 75) {
+                showToast(`Sıcaklık Artışı`, `${temp.toFixed(1)}°C sıcaklık seviyesi.`, 'warning');
                 lastAlertTime.temp = now;
+            }
+        }
+
+        // Header Status
+        if (temp >= 85) {
+            if (highestStatus !== 'critical') {
+                highestStatus = 'critical';
+                statusMessage = `KRİTİK: Sıcaklık ${temp.toFixed(1)}°C`;
+            }
+        } else if (temp >= 75) {
+            if (highestStatus === 'normal') {
+                highestStatus = 'warning';
+                statusMessage = `Uyarı: Sıcaklık ${temp.toFixed(1)}°C`;
             }
         }
     }
 
     checkMetric('disk', data.disk_usage, 'Disk', '%');
+
+    // Update Header UI
+    const dot = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+
+    // Reset classes
+    if (dot && text) {
+        dot.className = 'w-2 h-2 rounded-full animate-pulse transition-colors duration-300';
+        text.className = 'text-xs font-medium tracking-wide transition-colors duration-300';
+
+        if (highestStatus === 'critical') {
+            dot.classList.add('bg-red-500');
+            text.classList.add('text-red-400', 'font-bold');
+            text.innerText = statusMessage;
+        } else if (highestStatus === 'warning') {
+            dot.classList.add('bg-yellow-500');
+            text.classList.add('text-yellow-400', 'font-bold');
+            text.innerText = statusMessage;
+        } else {
+            dot.classList.add('bg-green-400');
+            text.classList.add('text-gray-400');
+            text.innerText = 'Sistem Normal';
+        }
+    }
 }
 
 async function updateStats() {
