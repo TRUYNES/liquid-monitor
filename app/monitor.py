@@ -237,55 +237,6 @@ class SystemMonitor:
                             'time': current_time
                         }
 
-                    # Container Data Persistence Logic
-                    final_rx = net_rx_total
-                    final_tx = net_tx_total
-                    
-                    if db:
-                        try:
-                            # 1. Get or create record
-                            record = db.query(ContainerTraffic).filter(ContainerTraffic.name == container.name).first()
-                            if not record:
-                                record = ContainerTraffic(
-                                    name=container.name,
-                                    total_rx=net_rx_total,
-                                    total_tx=net_tx_total,
-                                    last_docker_rx=net_rx_total,
-                                    last_docker_tx=net_tx_total
-                                )
-                                db.add(record)
-                                db.commit()
-                            else:
-                                # 2. Calculate Delta
-                                delta_rx = net_rx_total - record.last_docker_rx
-                                delta_tx = net_tx_total - record.last_docker_tx
-                                
-                                # Detect Reset
-                                if net_rx_total < record.last_docker_rx:
-                                    delta_rx = net_rx_total
-                                if net_tx_total < record.last_docker_tx:
-                                    delta_tx = net_tx_total
-
-                                if delta_rx < 0: delta_rx = 0
-                                if delta_tx < 0: delta_tx = 0
-                                
-                                # 3. Update Total
-                                record.total_rx += delta_rx
-                                record.total_tx += delta_tx
-                                
-                                # 4. Update Reference
-                                record.last_docker_rx = net_rx_total
-                                record.last_docker_tx = net_tx_total
-                                
-                                db.commit()
-                                
-                                # 5. Use Persisted Total for Display
-                                final_rx = record.total_rx
-                                final_tx = record.total_tx
-                                
-                        except Exception as e:
-                            print(f"Persistence Error for {container.name}: {e}")
-
                     return {
                         "id": container.short_id,
                         "name": container.name,
@@ -294,8 +245,8 @@ class SystemMonitor:
                         "memory_usage": mem_usage,
                         "memory_limit": mem_limit,
                         "memory_percent": round(mem_percent, 2),
-                        "net_rx": final_rx,
-                        "net_tx": final_tx,
+                        "net_rx": net_rx_total, # Raw Docker value (processed later)
+                        "net_tx": net_tx_total, # Raw Docker value (processed later)
                         "net_rx_speed": net_rx_speed, # Bytes/s
                         "net_tx_speed": net_tx_speed  # Bytes/s
                     }
@@ -340,10 +291,70 @@ class SystemMonitor:
             
         except Exception as e:
             print(f"Error listing containers: {e}")
+        
+        # Always get system services
+        system_services = self.get_system_services()
+        if system_services:
+            containers_data.extend(system_services)
             
-            
-        # Append system services (Tailscale, Cloudflare)
-        containers_data.extend(self.get_system_services())
+        # --- POST-PROCESSING: PERSISTENCE (SEQUENTIAL) ---
+        # Perform DB operations here in the main thread to avoid SQLite locking issues
+        if db and containers_data:
+            for c in containers_data:
+                     # Only persist for real containers (skip system services if needed)
+                     # Assuming system services also need persistence they would need Name logic
+                     # But for now let's focus on Docker containers which have 'net_rx' raw fields
+                    try:
+                        name = c.get('name')
+                        net_rx_total = c.get('net_rx', 0)
+                        net_tx_total = c.get('net_tx', 0)
+                        
+                        # Get or create record
+                        record = db.query(ContainerTraffic).filter(ContainerTraffic.name == name).first()
+                        if not record:
+                            record = ContainerTraffic(
+                                name=name,
+                                total_rx=net_rx_total,
+                                total_tx=net_tx_total,
+                                last_docker_rx=net_rx_total,
+                                last_docker_tx=net_tx_total
+                            )
+                            db.add(record)
+                            db.commit()
+                            # Display Current
+                            # c['net_rx'] = net_rx_total
+                            # c['net_tx'] = net_tx_total
+                        else:
+                            # Calculate Delta
+                            delta_rx = net_rx_total - record.last_docker_rx
+                            delta_tx = net_tx_total - record.last_docker_tx
+                            
+                            # Detect Reset
+                            if net_rx_total < record.last_docker_rx:
+                                delta_rx = net_rx_total
+                            if net_tx_total < record.last_docker_tx:
+                                delta_tx = net_tx_total
+
+                            if delta_rx < 0: delta_rx = 0
+                            if delta_tx < 0: delta_tx = 0
+                            
+                            # Update Total
+                            record.total_rx += delta_rx
+                            record.total_tx += delta_tx
+                            
+                            # Update Reference
+                            record.last_docker_rx = net_rx_total
+                            record.last_docker_tx = net_tx_total
+                            
+                            db.commit()
+                            
+                            # Update Display Value to Persisted Total
+                            c['net_rx'] = record.total_rx
+                            c['net_tx'] = record.total_tx
+
+                    except Exception as e:
+                       # print(f"Persistence Error for {name}: {e}")
+                       pass
         
         return containers_data
 
