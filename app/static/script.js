@@ -448,6 +448,9 @@ async function updateContainers() {
         const data = await res.json();
         containerData = data;
 
+        // Cache data for instant load on refresh
+        localStorage.setItem('cachedContainers', JSON.stringify(data));
+
         // Update count
         const activeCount = data.filter(c => c.state === 'running').length;
         document.getElementById('container-count').innerText = activeCount;
@@ -472,6 +475,12 @@ function sortContainers(col) {
 function renderContainers() {
     const tbody = document.getElementById('container-list');
     if (!tbody) return;
+
+    // Check if we have data
+    if (containerData.length === 0) {
+        // Keep loading state if really no data
+        return;
+    }
 
     // Sort
     const sorted = [...containerData].sort((a, b) => {
@@ -536,6 +545,25 @@ function renderContainers() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Try to load cached data for instant render
+    const cached = localStorage.getItem('cachedContainers');
+    if (cached) {
+        try {
+            const data = JSON.parse(cached);
+            if (Array.isArray(data) && data.length > 0) {
+                containerData = data;
+                // Update count immediately
+                const activeCount = data.filter(c => c.state === 'running').length;
+                const countEl = document.getElementById('container-count');
+                if (countEl) countEl.innerText = activeCount;
+
+                renderContainers();
+            }
+        } catch (e) {
+            console.error("Cache load error", e);
+        }
+    }
+
     initChart();
     initNetworkChart();
     updateStats();
