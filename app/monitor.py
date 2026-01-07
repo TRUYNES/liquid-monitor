@@ -93,15 +93,20 @@ class SystemMonitor:
         current_time = time.time()
         
         elapsed = current_time - self.last_net_time
-        if elapsed <= 0:
+        if elapsed <= 0.1: # Prevent division by near-zero time
             return 0.0, 0.0
 
         sent_diff = current_net_io.bytes_sent - self.last_net_io.bytes_sent
         recv_diff = current_net_io.bytes_recv - self.last_net_io.bytes_recv
         
+        # Determine strict sanity threshold (e.g. 2 GB/s is likely impossible for this Pi/Home setup)
+        # 2 GB = 2 * 1024 * 1024 * 1024 bytes
+        # If difference implies > 2GB/s, it's likely a counter wrap-around or startup spike
+        MAX_SPEED_BPS = 2 * 1024 * 1024 * 1024 * elapsed 
+
         # Handle overflow/reset or interface changes
-        if sent_diff < 0: sent_diff = 0
-        if recv_diff < 0: recv_diff = 0
+        if sent_diff < 0 or sent_diff > MAX_SPEED_BPS: sent_diff = 0
+        if recv_diff < 0 or recv_diff > MAX_SPEED_BPS: recv_diff = 0
 
         # Convert to KB/s
         sent_speed = (sent_diff / 1024) / elapsed
