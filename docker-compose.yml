@@ -3,7 +3,6 @@ version: '3.8'
 services:
   liquid-monitor:
     build: .
-    image: liquid-monitor:latest
     container_name: liquid-monitor
     restart: unless-stopped
     ports:
