@@ -112,9 +112,24 @@ class SystemMonitor:
         return time.time() - psutil.boot_time()
 
     def collect(self):
+        # Prevent "stat stealing" between API calls and DB background loop
+        # Only update real stats if some time has passed (e.g., 2 seconds)
+        # Otherwise return cached result.
+        current_time = time.time()
+        
+        # Initialize cache if missing
+        if not hasattr(self, '_collect_cache'):
+            self._collect_cache = None
+            self._last_collect_time = 0
+            
+        # Return cache if fresh enough (protects the delta calculation)
+        if self._collect_cache and (current_time - self._last_collect_time < 2.0):
+            return self._collect_cache
+
         upload, download = self.get_network_speed()
         disk = psutil.disk_usage('/')
-        return {
+        
+        data = {
             "cpu_usage": self.get_cpu_usage(),
             "ram_usage": self.get_ram_usage(),
             "cpu_temp": self.get_cpu_temp(),
@@ -127,6 +142,10 @@ class SystemMonitor:
             "processes": self.get_process_count(),
             "uptime": self.get_uptime_seconds()
         }
+        
+        self._collect_cache = data
+        self._last_collect_time = current_time
+        return data
 
     def get_containers(self):
         if not self.docker_client:
