@@ -330,22 +330,22 @@ async function updateStats() {
 
         if (peaks.cpu_peak) {
             const time = formatPeakTime(peaks.cpu_peak.timestamp);
-            document.getElementById('cpu-peak').innerText = `${peaks.cpu_peak.value.toFixed(1)}% @${time} `;
+            document.getElementById('cpu-peak').innerHTML = `${peaks.cpu_peak.value.toFixed(1)}% <span class="font-bold ml-1">${time}</span>`;
         }
         if (peaks.ram_peak) {
             const time = formatPeakTime(peaks.ram_peak.timestamp);
-            document.getElementById('ram-peak').innerText = `${peaks.ram_peak.value.toFixed(1)}% @${time} `;
+            document.getElementById('ram-peak').innerHTML = `${peaks.ram_peak.value.toFixed(1)}% <span class="font-bold ml-1">${time}</span>`;
         }
         if (peaks.temp_peak) {
             const time = formatPeakTime(peaks.temp_peak.timestamp);
-            document.getElementById('temp-peak').innerText = `${peaks.temp_peak.value.toFixed(1)}°C @${time} `;
+            document.getElementById('temp-peak').innerHTML = `${peaks.temp_peak.value.toFixed(1)}°C <span class="font-bold ml-1">${time}</span>`;
         }
         if (peaks.net_down_peak) {
             const time = formatPeakTime(peaks.net_down_peak.timestamp);
-            document.getElementById('peak-down').innerText = `${(peaks.net_down_peak.value / 1024).toFixed(2)} MB / s @${time} `;
+            document.getElementById('peak-down').innerHTML = `${(peaks.net_down_peak.value / 1024).toFixed(2)} MB/s <span class="font-bold ml-1">${time}</span>`;
         }
         const time = formatPeakTime(peaks.net_up_peak.timestamp);
-        document.getElementById('peak-up').innerText = `${(peaks.net_up_peak.value / 1024).toFixed(2)} MB / s @${time} `;
+        document.getElementById('peak-up').innerHTML = `${(peaks.net_up_peak.value / 1024).toFixed(2)} MB/s <span class="font-bold ml-1">${time}</span>`;
 
         // Totals (sum of speeds KB/s * 5s interval = Total KB)
         // Then KB -> GB ( / 1024 / 1024 / 1024 )
