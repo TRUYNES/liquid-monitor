@@ -270,6 +270,98 @@ function formatTime(seconds) {
     return str;
 }
 
+// Alert System State
+const lastAlertTime = {
+    cpu: 0,
+    ram: 0,
+    temp: 0,
+    disk: 0
+};
+const ALERT_COOLDOWN = 300000; // 5 minutes in ms
+
+function showToast(title, message, type = 'warning') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const id = 'toast-' + Date.now();
+    const colors = type === 'critical'
+        ? 'bg-red-500/10 border-red-500 text-red-100'
+        : 'bg-yellow-500/10 border-yellow-500 text-yellow-100';
+
+    // Critical: Red, Warning: Yellow
+    const icon = type === 'critical'
+        ? '<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>'
+        : '<svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>';
+
+    const html = `
+        <div id="${id}" class="pointer-events-auto transform transition-all duration-300 translate-x-full opacity-0 flex items-start gap-3 p-4 rounded-xl border ${colors} backdrop-blur-md shadow-lg min-w-[300px]">
+            <div class="flex-shrink-0">
+                ${icon}
+            </div>
+            <div class="flex-1">
+                <h4 class="font-bold text-sm mb-1">${title}</h4>
+                <p class="text-xs opacity-90">${message}</p>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-white transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', html);
+
+    // Animate in
+    requestAnimationFrame(() => {
+        const toast = document.getElementById(id);
+        if (toast) {
+            toast.classList.remove('translate-x-full', 'opacity-0');
+        }
+    });
+
+    // Auto dismiss
+    setTimeout(() => {
+        const toast = document.getElementById(id);
+        if (toast) {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 5000);
+}
+
+function checkAlerts(data) {
+    const now = Date.now();
+
+    const checkMetric = (key, value, name, unit) => {
+        if (now - lastAlertTime[key] < ALERT_COOLDOWN) return;
+
+        if (value >= 90) {
+            showToast(`${name} Kritik Seviyede!`, `%${value.toFixed(1)} kullanımı ile kritik seviyeye ulaştı.`, 'critical');
+            lastAlertTime[key] = now;
+        } else if (value >= 80) {
+            showToast(`${name} Uyarısı`, `%${value.toFixed(1)} kullanımı ile dikkat çekiyor.`, 'warning');
+            lastAlertTime[key] = now;
+        }
+    };
+
+    checkMetric('cpu', data.cpu_usage, 'CPU', '%');
+    checkMetric('ram', data.ram_usage, 'RAM', '%');
+
+    if (data.cpu_temp) {
+        // Temperature logic: >85 Critical, >75 Warning
+        if (now - lastAlertTime.temp >= ALERT_COOLDOWN) {
+            if (data.cpu_temp >= 85) {
+                showToast(`Yüksek Sıcaklık!`, `${data.cpu_temp.toFixed(1)}°C ile işlemci çok ısındı.`, 'critical');
+                lastAlertTime.temp = now;
+            } else if (data.cpu_temp >= 75) {
+                showToast(`Sıcaklık Artışı`, `${data.cpu_temp.toFixed(1)}°C sıcaklık seviyesi.`, 'warning');
+                lastAlertTime.temp = now;
+            }
+        }
+    }
+
+    checkMetric('disk', data.disk_usage, 'Disk', '%');
+}
+
 async function updateStats() {
     try {
         const [currentRes, peaksRes] = await Promise.all([
@@ -279,6 +371,9 @@ async function updateStats() {
 
         const current = await currentRes.json();
         const peaks = await peaksRes.json();
+
+        // Check Alerts
+        checkAlerts(current);
 
         // Update last update time
         const now = new Date();
