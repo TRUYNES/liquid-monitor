@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Replace with your local IP if this changes
-const API_URL = 'http://10.187.17.191:8000';
+const API_URL = 'https://data.noktafikir.com';
 
 const api = axios.create({
     baseURL: API_URL,
