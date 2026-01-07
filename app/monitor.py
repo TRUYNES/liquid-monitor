@@ -12,7 +12,7 @@ import threading
 
 class SystemMonitor:
     def __init__(self):
-        self.last_net_io = psutil.net_io_counters()
+        self.last_net_io = self._get_net_io()
         self.last_net_time = time.time()
 
         # Configure psutil for Docker on Raspberry Pi
@@ -65,11 +65,24 @@ class SystemMonitor:
             return 45.0 + random.uniform(-2, 5)
         return None
 
+    def _get_net_io(self):
+        """Helper to get filtered network IO (physical interfaces only)"""
+        io = psutil.net_io_counters(pernic=True)
+        rx = 0
+        tx = 0
+        for iface, stats in io.items():
+            if iface.startswith(('lo', 'docker', 'veth', 'br-', 'dummy')):
+                continue
+            rx += stats.bytes_recv
+            tx += stats.bytes_sent
+        # Return object compatible with psutil structure
+        return type('IO', (), {'bytes_recv': rx, 'bytes_sent': tx})()
+
     def get_network_speed(self):
         """
         Returns (upload_speed, download_speed) in KB/s since last call.
         """
-        current_net_io = psutil.net_io_counters()
+        current_net_io = self._get_net_io()
         current_time = time.time()
         
         elapsed = current_time - self.last_net_time
@@ -78,6 +91,10 @@ class SystemMonitor:
 
         sent_diff = current_net_io.bytes_sent - self.last_net_io.bytes_sent
         recv_diff = current_net_io.bytes_recv - self.last_net_io.bytes_recv
+        
+        # Handle overflow/reset or interface changes
+        if sent_diff < 0: sent_diff = 0
+        if recv_diff < 0: recv_diff = 0
 
         # Convert to KB/s
         sent_speed = (sent_diff / 1024) / elapsed
