@@ -129,7 +129,7 @@ class SystemMonitor:
             self._last_collect_time = 0
             
         # Return cache if fresh enough (protects the delta calculation)
-        if self._collect_cache and (current_time - self._last_collect_time < 2.0):
+        if self._collect_cache and (current_time - self._last_collect_time < 0.8):
             return self._collect_cache
 
         upload, download = self.get_network_speed()
