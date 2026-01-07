@@ -45,9 +45,10 @@ export default function DashboardScreen() {
     }
 
     // Format network speed
-    const formatSpeed = (val: number) => {
+    const formatSpeed = (val: number | undefined | null) => {
+        if (val === undefined || val === null) return '0.0 KB/s';
         if (val > 1024) return `${(val / 1024).toFixed(1)} MB/s`;
-        return `${val.toFixed(1)} KB/s`;
+        return `${Number(val).toFixed(1)} KB/s`;
     };
 
     // Prepare Chart Data (Last 24h - Simplified)
