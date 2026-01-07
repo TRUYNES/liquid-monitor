@@ -88,8 +88,8 @@ class SystemMonitor:
         rx = 0
         tx = 0
         for iface, stats in io.items():
-            if iface.startswith(('lo', 'docker', 'veth', 'br-', 'dummy')):
-                continue
+            # if iface.startswith(('lo', 'docker', 'veth', 'br-', 'dummy')):
+            #    continue
             rx += stats.bytes_recv
             tx += stats.bytes_sent
         # Return object compatible with psutil structure
