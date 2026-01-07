@@ -241,16 +241,28 @@ class SystemMonitor:
                         "error": str(e)
                     }
 
-            # Sequential processing is safer for stability
-            # Threading removed due to "No containers" issue reported by user
+            # Use ThreadPoolExecutor for parallel processing (Revised for stability)
+            # Using 'submit' + 'as_completed' is safer than 'map' for handling individual failures
+            import concurrent.futures
+            
             containers_data = []
-            for container in containers:
-                try:
-                    c_data = process_container(container)
-                    containers_data.append(c_data)
-                except Exception as e:
-                    print(f"Error processing container {container.name}: {e}")
-
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor: # Limit workers to prevent overload
+                future_to_container = {executor.submit(process_container, c): c for c in containers}
+                
+                for future in concurrent.futures.as_completed(future_to_container):
+                    c = future_to_container[future]
+                    try:
+                        data = future.result()
+                        containers_data.append(data)
+                    except Exception as exc:
+                        print(f"Container processing generated an exception: {exc}")
+                        # Append error state instead of missing container
+                        containers_data.append({
+                            "id": c.short_id, "name": c.name, "state": "error", "error": str(exc),
+                            "cpu_percent": 0,"memory_percent": 0,"net_rx": 0,"net_tx": 0,
+                            "net_rx_speed": 0,"net_tx_speed": 0
+                        })
+            
         except Exception as e:
             print(f"Error listing containers: {e}")
             
