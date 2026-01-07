@@ -346,25 +346,24 @@ async function updateStats() {
         }
         const time = formatPeakTime(peaks.net_up_peak.timestamp);
         document.getElementById('peak-up').innerText = `${(peaks.net_up_peak.value / 1024).toFixed(2)} MB / s @${time} `;
-    }
 
         // Totals (sum of speeds KB/s * 5s interval = Total KB)
         // Then KB -> GB ( / 1024 / 1024 / 1024 )
         if (peaks.net_total_down !== undefined) {
-        const totalDownGB = (peaks.net_total_down * 5) / (1024 * 1024 * 1024); // speed(KB/s) * 5s -> KB -> MB -> GB
-        document.getElementById('total-down-24h').innerText = `${totalDownGB.toFixed(2)} GB`;
-    }
-    if (peaks.net_total_up !== undefined) {
-        const totalUpGB = (peaks.net_total_up * 5) / (1024 * 1024 * 1024);
-        document.getElementById('total-up-24h').innerText = `${totalUpGB.toFixed(2)} GB`;
-    }
+            const totalDownGB = (peaks.net_total_down * 5) / (1024 * 1024 * 1024); // speed(KB/s) * 5s -> KB -> MB -> GB
+            document.getElementById('total-down-24h').innerText = `${totalDownGB.toFixed(2)} GB`;
+        }
+        if (peaks.net_total_up !== undefined) {
+            const totalUpGB = (peaks.net_total_up * 5) / (1024 * 1024 * 1024);
+            document.getElementById('total-up-24h').innerText = `${totalUpGB.toFixed(2)} GB`;
+        }
 
-    // Uptime
-    document.getElementById('uptime-display').innerText = formatTime(current.uptime);
+        // Uptime
+        document.getElementById('uptime-display').innerText = formatTime(current.uptime);
 
-} catch (e) {
-    console.error("Failed to fetch stats", e);
-}
+    } catch (e) {
+        console.error("Failed to fetch stats", e);
+    }
 }
 
 async function updateHistory() {
@@ -463,10 +462,41 @@ async function updateContainers() {
         let maxUp = 0;
         let topUpContainer = null;
 
+        // Client-side speed calculation for better reliability
+        if (!window.lastContainerData) window.lastContainerData = {};
+        const now = Date.now();
+
         data.forEach(c => {
-            // Ensure values are numbers
-            const dlSpeed = Number(c.net_rx_speed) || 0;
-            const ulSpeed = Number(c.net_tx_speed) || 0;
+            const cid = c.id;
+            let derivedRxSpeed = 0;
+            let derivedTxSpeed = 0;
+
+            if (window.lastContainerData[cid]) {
+                const last = window.lastContainerData[cid];
+                const timeDelta = (now - last.timestamp) / 1000; // seconds
+
+                if (timeDelta > 0 && timeDelta < 10) { // Avoid huge jumps if tab was sleeping
+                    const rxDiff = c.net_rx - last.net_rx;
+                    const txDiff = c.net_tx - last.net_tx;
+
+                    if (rxDiff >= 0) derivedRxSpeed = rxDiff / timeDelta;
+                    if (txDiff >= 0) derivedTxSpeed = txDiff / timeDelta;
+                }
+            }
+
+            // Store current state
+            window.lastContainerData[cid] = {
+                timestamp: now,
+                net_rx: c.net_rx,
+                net_tx: c.net_tx
+            };
+
+            // Use derived speed if valid, otherwise fallback (or 0)
+            const dlSpeed = derivedRxSpeed;
+            const ulSpeed = derivedTxSpeed;
+
+            // Debug
+            // if (derivedTxSpeed > 0) console.log(c.name, "TX Speed:", derivedTxSpeed);
 
             if (dlSpeed > maxDown) {
                 maxDown = dlSpeed;
