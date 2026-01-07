@@ -1,5 +1,7 @@
 # LiquidMonitor
 
+> **Durum:** Kararlı Sürüme Geri Döndürüldü (Rollback to v1.0 Stable) - 07.01.2026
+
 A modern, lightweight system monitoring tool for Raspberry Pi (and other Linux systems).
 Features a Glassmorphism UI ("Liquid Glass"), 24-hour history charts, and peak usage tracking.
 
