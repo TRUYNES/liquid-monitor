@@ -517,21 +517,46 @@ async function updateStats() {
     }
 }
 
+let currentPeriod = '24h';
+
+function setPeriod(period) {
+    if (currentPeriod === period) return;
+    currentPeriod = period;
+
+    // Update UI buttons
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        if (btn.dataset.period === period) {
+            btn.classList.add('bg-blue-500', 'text-white', 'shadow-sm');
+            btn.classList.remove('text-gray-400', 'hover:text-white', 'bg-transparent');
+        } else {
+            btn.classList.remove('bg-blue-500', 'text-white', 'shadow-sm');
+            btn.classList.add('text-gray-400', 'hover:text-white', 'bg-transparent');
+        }
+    });
+
+    // Refresh charts
+    updateHistory();
+    updateNetworkHistory();
+}
+
 async function updateHistory() {
     try {
-        const res = await fetch('/api/stats/history');
+        const res = await fetch(`/api/stats/history?period=${currentPeriod}`);
         const data = await res.json();
 
-        // Downsample for performance if needed
+        // Downsample for performance if needed (Backend handles main downsampling now, but extra safety)
         const displayedData = data.length > 500 ? data.filter((_, i) => i % Math.ceil(data.length / 500) === 0) : data;
 
         const labels = displayedData.map(d => {
             // Append 'Z' to indicate UTC time if not present
             const ts = d.timestamp.endsWith('Z') ? d.timestamp : d.timestamp + 'Z';
             const date = new Date(ts);
-            return date.toLocaleString('tr-TR', {
-                hour: '2-digit', minute: '2-digit'
-            });
+
+            if (currentPeriod === '24h') {
+                return date.toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                return date.toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            }
         });
 
         const cpuData = displayedData.map(d => d.cpu_usage);
@@ -546,7 +571,10 @@ async function updateHistory() {
         historyChart.options.scales.x.ticks.callback = function (val, index) {
             const label = this.getLabelForValue(val);
             if (typeof label === 'string') {
-                return label.split(' ').slice(-1)[0].substring(0, 5);
+                // Return only time for 24h, or Day+Time for long periods
+                // But label is already formatted above.
+                // Just prevent too long labels overlapping
+                return label;
             }
             return label;
         };
@@ -560,18 +588,20 @@ async function updateHistory() {
 // Update network traffic history
 async function updateNetworkHistory() {
     try {
-        const res = await fetch('/api/stats/history');
+        const res = await fetch(`/api/stats/history?period=${currentPeriod}`);
         const data = await res.json();
 
         const displayedData = data.length > 500 ? data.filter((_, i) => i % Math.ceil(data.length / 500) === 0) : data;
 
         const labels = displayedData.map(d => {
-            // Append 'Z' to indicate UTC time if not present
             const ts = d.timestamp.endsWith('Z') ? d.timestamp : d.timestamp + 'Z';
             const date = new Date(ts);
-            return date.toLocaleString('tr-TR', {
-                hour: '2-digit', minute: '2-digit'
-            });
+
+            if (currentPeriod === '24h') {
+                return date.toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                return date.toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            }
         });
 
         const downData = displayedData.map(d => (d.net_recv_speed || 0) / 1024); // KB to MB

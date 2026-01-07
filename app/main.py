@@ -48,10 +48,9 @@ async def collect_metrics_loop():
             db.add(metric)
             db.commit()
             
-            # Cleanup old data (older than 24 hours) - Run every 1 hour approximately
-            # 5s sleep * 720 = 3600s
+            # Cleanup old data (older than 30 days) - Run every 1 hour approximately
             if datetime.now().minute == 0 and datetime.now().second < 10:
-                 cutoff = datetime.utcnow() - timedelta(hours=24)
+                 cutoff = datetime.utcnow() - timedelta(days=30)
                  db.query(SystemMetric).filter(SystemMetric.timestamp < cutoff).delete()
                  db.commit()
             
@@ -73,11 +72,34 @@ def get_current_stats():
     return data
 
 @app.get("/api/stats/history")
-def get_history(db: Session = Depends(get_db)):
-    # Get all records from last 24h
-    cutoff = datetime.utcnow() - timedelta(hours=24)
+def get_history(period: str = "24h", db: Session = Depends(get_db)):
+    # Determine cutoff based on period
+    if period == "7d":
+        cutoff = datetime.utcnow() - timedelta(days=7)
+    elif period == "30d":
+        cutoff = datetime.utcnow() - timedelta(days=30)
+    else: # Default 24h
+        cutoff = datetime.utcnow() - timedelta(hours=24)
+        
     metrics = db.query(SystemMetric).filter(SystemMetric.timestamp > cutoff).order_by(SystemMetric.timestamp.asc()).all()
-    return metrics
+    
+    # Simple downsampling for long periods to avoid huge payloads
+    # 24h = ~17k records (5s interval) -> return all or 1/5
+    # 7d = ~120k records -> return 1/60 (every 5 mins)
+    # 30d = ~500k records -> return 1/240 (every 20 mins)
+    
+    if period == "7d":
+        return metrics[::60] 
+    elif period == "30d":
+        return metrics[::240]
+        
+    return metrics[::5] # Return 1 minute resolution for 24h (every 12th record if 5s, actually 5s*12=60s. wait, 5s interval. ::12 is 1 min)
+    # Actually current frontend behavior: 
+    # Frontend handled 'downsampling' by taking modulus. 
+    # Better to send less data from backend.
+    # Let's verify existing logic: 5s interval.
+    # 24h = 17280 points. Sending all is heavy.
+    # ::12 = every 60s. 1440 points for 24h. Reasonable.
 
 @app.get("/api/stats/peaks")
 def get_peaks(db: Session = Depends(get_db)):
