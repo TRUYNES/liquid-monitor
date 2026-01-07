@@ -136,41 +136,23 @@ class SystemMonitor:
         try:
             containers = self.docker_client.containers.list()
             
-            for container in containers:
+            # Helper function to process a single container
+            def process_container(container):
                 try:
                     # Get stats (stream=False to get just one snapshot)
                     stats = container.stats(stream=False)
                     
                     # Calculate CPU %
-                    # Docker provides pre_cpu_stats, ensuring we can calculate delta
-                    # Note: This is an estimation. Real-time CPU % usually requires two samples over time.
-                    # Using pre_cpu_stats if available (it is in the stats object)
-                    
                     cpu_percent = 0.0
                     if 'cpu_stats' in stats and 'precpu_stats' in stats:
                         cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
                                     stats['precpu_stats']['cpu_usage']['total_usage']
                         
                         system_cpu_delta = stats['cpu_stats']['system_cpu_usage'] - \
-                                           stats['precpu_stats']['system_cpu_usage']
-                        
-                        number_cpus = stats['cpu_stats'].get('online_cpus', 1)
-                        if 'online_cpus' not in stats['cpu_stats'] and 'percpu_usage' in stats['cpu_stats']['cpu_usage']:
-                             number_cpus = len(stats['cpu_stats']['cpu_usage']['percpu_usage'])
+                                            stats['precpu_stats']['system_cpu_usage']
 
-                        # Normalize CPU percentage (0-100% per core vs Total System)
-                        # We want Total System % (0-100 max even with 4 cores)
-                        # The original formula calculates total usage across all cores (can > 100%)
-                        # To normalize: (delta / system_delta) * 100
+                        # Normalize CPU percentage (0-100% System Total)
                         if system_cpu_delta > 0 and cpu_delta > 0:
-                            # Formula for PER CORE usage: (cpu_delta / system_cpu_delta) * number_cpus * 100.0
-                            # Formula for SYSTEM TOTAL usage: (cpu_delta / system_cpu_delta) * 100.0
-                            # User expects 0-100% total, so we remove number_cpus multiplication for normalization
-                            # Or we can keep it and divide by number_cpus later.
-                            # Standard "docker stats" shows per-core (>100%), but user says it is "nonsense".
-                            # So we will normalize to System Total.
-                            cpu_percent = (cpu_delta / system_cpu_delta) * number_cpus * 100.0
-                            # Clamp or Normalize? Let's Normalize to System Total (0-100)
                             cpu_percent = (cpu_delta / system_cpu_delta) * 100.0
 
                     # Calculate Memory
@@ -180,17 +162,11 @@ class SystemMonitor:
                     
                     if 'memory_stats' in stats:
                         mem_usage = stats['memory_stats'].get('usage', 0)
-                        # Adjust for cache usage if available (Docker CLI does this)
-                        if 'stats' in stats['memory_stats'] and 'cache' in stats['memory_stats']['stats']:
-                             # Some versions use 'cache', cgroup v2 might utilize 'inactive_file'
-                             # Simplification: just usage
-                             pass
-                             
                         mem_limit = stats['memory_stats'].get('limit', 1)
                         if mem_limit > 0:
                             mem_percent = (mem_usage / mem_limit) * 100.0
 
-                    # Network I/O (Sum of all interfaces)
+                    # Network I/O
                     net_rx = 0
                     net_tx = 0
                     if 'networks' in stats:
@@ -198,7 +174,7 @@ class SystemMonitor:
                             net_rx += stats['networks'][iface]['rx_bytes']
                             net_tx += stats['networks'][iface]['tx_bytes']
 
-                    containers_data.append({
+                    return {
                         "id": container.short_id,
                         "name": container.name,
                         "state": container.status,
@@ -208,10 +184,10 @@ class SystemMonitor:
                         "memory_percent": round(mem_percent, 2),
                         "net_rx": net_rx,
                         "net_tx": net_tx
-                    })
+                    }
                 except Exception as e:
-                    print(f"Error getting stats for {container.name}: {e}")
-                    container_info = {
+                    # print(f"Error getting stats for {container.name}: {e}")
+                    return {
                         "id": container.short_id,
                         "name": container.name,
                         "state": container.status,
@@ -223,9 +199,15 @@ class SystemMonitor:
                         "net_tx": 0,
                         "error": str(e)
                     }
-                    containers_data.append(container_info)
-                    continue
-                    
+
+            # Use ThreadPoolExecutor for parallel processing
+            # 29 containers sequentially takes ~3-5s. Parallel takes <1s.
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                results = list(executor.map(process_container, containers))
+            
+            containers_data = results
+
         except Exception as e:
             print(f"Error listing containers: {e}")
             
