@@ -51,13 +51,16 @@ export default function DashboardScreen() {
     };
 
     // Prepare Chart Data (Last 24h - Simplified)
-    // Take last 10 points for readability on mobile or average them
+    // Take last 6 points for readability on mobile
     const chartLabels = history.slice(-6).map((h: any) => {
-        const d = new Date(h.timestamp);
+        // Safe Date parsing for Android
+        const dateStr = h.timestamp.endsWith('Z') ? h.timestamp : h.timestamp + 'Z';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return "00:00"; // Fallback
         return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
     });
 
-    const cpuData = history.slice(-6).map((h: any) => h.cpu_usage);
+    const cpuData = history.slice(-6).map((h: any) => parseFloat(h.cpu_usage) || 0); // Ensure number
     // const ramData = history.slice(-6).map((h: any) => h.ram_usage);
 
     return (
