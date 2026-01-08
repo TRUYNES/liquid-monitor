@@ -605,6 +605,7 @@ async function updateHistory() {
     try {
         const res = await fetchWithAuth(`/api/history?period=${historyPeriod}`);
         const data = await res.json();
+        console.log(`History Data (${historyPeriod}):`, data.length, "records");
 
         // Downsample for performance if needed (Backend handles main downsampling now, but extra safety)
         const displayedData = data.length > 500 ? data.filter((_, i) => i % Math.ceil(data.length / 500) === 0) : data;
