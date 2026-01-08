@@ -240,9 +240,9 @@ class SystemMonitor:
         elif data.get('cpu_temp') and data['cpu_temp'] > THRESHOLDS['temp']['warning']:
              add_alert('temp', data['cpu_temp'], 'warning', "İşlemci ısınıyor: {value}°C")
 
-        # Network Upload (Threshold: ~5 MB/s = 5120 KB/s based on user's 60mbps limit)
+        # Network Upload (Threshold: 2 MB/s = 2048 KB/s)
         # We use a slightly lower threshold to catch spikes before saturation
-        UPLOAD_LIMIT_KB = 5120 
+        UPLOAD_LIMIT_KB = 2048 
         
         if data['net_sent_speed'] > UPLOAD_LIMIT_KB:
             # Find the network hog
