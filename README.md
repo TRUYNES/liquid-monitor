@@ -1,7 +1,7 @@
 # MonitorX
 
 <div align="center">
-  <img src="https://via.placeholder.com/150/3b82f6/ffffff?text=X" alt="MonitorX Logo" width="100" height="100" style="border-radius: 20px;">
+  <img src="app/static/logo.svg" alt="MonitorX Logo" width="100" height="100">
   
   <h3>Modern, Real-Time System & Docker Monitor</h3>
   <p>
