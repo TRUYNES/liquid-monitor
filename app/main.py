@@ -98,10 +98,17 @@ def get_history(period: str = "24h", db: Session = Depends(get_db)):
     # 7d = ~120k records -> return 1/60 (every 5 mins)
     # 30d = ~500k records -> return 1/240 (every 20 mins)
     
+    # Downsampling logic ensuring the latest data point is preserved
     if period == "7d":
-        return metrics[::60] 
+        downsampled = metrics[::60]
+        if metrics and (not downsampled or downsampled[-1].id != metrics[-1].id):
+            downsampled.append(metrics[-1])
+        return downsampled
     elif period == "30d":
-        return metrics[::240]
+        downsampled = metrics[::240]
+        if metrics and (not downsampled or downsampled[-1].id != metrics[-1].id):
+            downsampled.append(metrics[-1])
+        return downsampled
         
     return metrics[::5] # Return 1 minute resolution for 24h
     # Actually current frontend behavior: 
