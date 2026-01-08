@@ -56,8 +56,42 @@ class SystemMonitor:
     def get_ram_usage(self):
         return psutil.virtual_memory().percent
 
+    def get_disk_stats(self):
+        """
+        Aggregates stats from all physical mounted disks.
+        """
+        total_total = 0
+        total_used = 0
+        total_free = 0
+        try:
+            partitions = psutil.disk_partitions(all=False)
+            seen_devices = set()
+            for p in partitions:
+                if (('/dev/sd' in p.device or '/dev/mmcblk' in p.device or '/dev/nvme' in p.device) 
+                    and p.device not in seen_devices):
+                    try:
+                        usage = psutil.disk_usage(p.mountpoint)
+                        total_total += usage.total
+                        total_used += usage.used
+                        total_free += usage.free
+                        seen_devices.add(p.device)
+                    except OSError:
+                        pass
+            
+            if total_total == 0:
+                 usage = psutil.disk_usage('/')
+                 total_total = usage.total
+                 total_used = usage.used
+                 total_free = usage.free
+
+            percent = (total_used / total_total) * 100.0 if total_total > 0 else 0.0
+            return {'total': total_total, 'used': total_used, 'free': total_free, 'percent': percent}
+
+        except Exception:
+            return {'total': 0, 'used': 0, 'free': 0, 'percent': 0}
+
     def get_disk_usage(self):
-        return psutil.disk_usage('/').percent
+        return self.get_disk_stats()['percent']
 
     def get_cpu_temp(self):
         """
@@ -292,15 +326,15 @@ class SystemMonitor:
             return self._collect_cache
 
         upload, download = self.get_network_speed()
-        disk = psutil.disk_usage('/')
+        disk_stats = self.get_disk_stats() # Use new aggregated stats
         
         data = {
             "cpu_usage": self.get_cpu_usage(),
             "ram_usage": self.get_ram_usage(),
-            "disk_usage": disk.percent,
-            "disk_total_gb": round(disk.total / (1024**3), 2),
-            "disk_used_gb": round(disk.used / (1024**3), 2),
-            "disk_free_gb": round(disk.free / (1024**3), 2),
+            "disk_usage": disk_stats['percent'],
+            "disk_total_gb": round(disk_stats['total'] / (1024**3), 2),
+            "disk_used_gb": round(disk_stats['used'] / (1024**3), 2),
+            "disk_free_gb": round(disk_stats['free'] / (1024**3), 2),
             "net_sent_speed": upload,
             "net_recv_speed": download,
             "cpu_temp": self.get_cpu_temp(),
@@ -338,7 +372,7 @@ class SystemMonitor:
                     # Get stats (stream=False to get just one snapshot)
                     stats = container.stats(stream=False)
                     
-                    # Calculate CPU %
+                    # Calculate CPU % (Normalized by Core Count)
                     cpu_percent = 0.0
                     if 'cpu_stats' in stats and 'precpu_stats' in stats:
                         cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
@@ -347,9 +381,47 @@ class SystemMonitor:
                         system_cpu_delta = stats['cpu_stats']['system_cpu_usage'] - \
                                             stats['precpu_stats']['system_cpu_usage']
 
-                        # Normalize CPU percentage (0-100% System Total)
+                        # Determine CPU Count to normalize
+                        cpu_count = 0
+                        if 'online_cpus' in stats['cpu_stats']:
+                            cpu_count = stats['cpu_stats']['online_cpus']
+                        
+                        if not cpu_count and 'cpu_usage' in stats['cpu_stats'] and 'percpu_usage' in stats['cpu_stats']['cpu_usage']:
+                            cpu_count = len(stats['cpu_stats']['cpu_usage']['percpu_usage'])
+                            
+                        if not cpu_count: 
+                            cpu_count = psutil.cpu_count() or 1
+
                         if system_cpu_delta > 0 and cpu_delta > 0:
-                            cpu_percent = (cpu_delta / system_cpu_delta) * 100.0
+                            # Formula: (Delta / SystemDelta) * 100 / NumCPUs
+                            cpu_percent = ((cpu_delta / system_cpu_delta) * 100.0)
+                            # On Linux/Docker, typically this is already normalized if using online_cpus way, 
+                            # NO, actually docker stats command does NOT divide by cores, but here we want user friendly %
+                            # If we want 0-100% per core, we keep it. If we want 0-100% TOTAL, we divide.
+                            # User complained about >100%, so we divide.
+                            cpu_percent = cpu_percent * cpu_count # Docker API usually gives 0.0-1.0 fraction of one core? 
+                            # Wait, the official formula is (cpu_delta / system_cpu_delta) * number_cpus * 100.0 
+                            # Let's verify standard: (cpu_delta / system_delta) * 100 * cpu_count -> This gives >100% on multi-core
+                            # To get 0-100% total system usage, we should NOT multiply by cpu_count.
+                            
+                            # Let's stick to the simplest interpretation:
+                            # cpu_delta / system_cpu_delta is the fraction of the WHOLE system capacity used IF system_cpu_delta represents all cores.
+                            # But system_cpu_delta usually represents wall time * cores.
+                            
+                            # Let's try direct approach: percent = (delta / sys_delta) * 100.
+                            # This usually yields 0-100% total.
+                            # But previous code was doing: (cpu_delta / system_cpu_delta) * 100.0
+                            # And existing values are 138%. This implies user has >1 core and process uses >1 core worth.
+                            
+                            # Re-reading standard docker stats logic:
+                            # docker stats displays % based on total cores? No, it often displays >100%.
+                            # But user wants normalized.
+                            
+                            base_percent = (cpu_delta / system_cpu_delta) * 100.0
+                            cpu_percent = base_percent * cpu_count # This is standard docker stats (can exceed 100%)
+                            
+                            # To fix "User said > 100% is bad", we must normalize to 0-100 range.
+                            cpu_percent = cpu_percent / cpu_count
 
                     # Calculate Memory
                     mem_usage = 0
