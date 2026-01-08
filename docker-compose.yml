@@ -2,26 +2,20 @@ version: '3.8'
 
 services:
   monitorx:
-    # Dockge'nin kodu çekip build edebilmesi için GitHub Repo adresini veriyoruz
     build: https://github.com/TRUYNES/liquid-monitor.git#main
     container_name: monitorx
     restart: unless-stopped
     volumes:
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Mount host /proc and /sys for accurate host metrics from within container
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
     environment:
       - PROCFS_PATH=/host/proc
       - SYSFS_PATH=/host/sys
-      # Kullanıcı Adı ve Şifre Ayarları
       - MONITOR_USER=admin
       - MONITOR_PASS=admin
-    # Host Mode optimization for Raspberry Pi / Linux
     network_mode: host
     pid: host
-    # Port is handled by app since we are on host network (default 8000 or override via command)
     command: uvicorn app.main:app --host 0.0.0.0 --port 9876
-    # Privileged mode helps with accessing hardware sensors (temp)
     privileged: true
