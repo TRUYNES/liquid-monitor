@@ -163,17 +163,69 @@ class SystemMonitor:
                 })
                 self.alert_cooldowns[alert_key] = current_time
 
+
+        def get_resource_hog(metric_type):
+            """Finds the top consumer (container or process) for cpu/ram"""
+            try:
+                # 1. Check Containers
+                containers = self.get_containers(db) # Reuse checks
+                top_container = None
+                max_val = 0
+                
+                for c in containers:
+                    val = c['cpu_percent'] if metric_type == 'cpu' else c['memory_percent']
+                    if val > max_val:
+                        max_val = val
+                        top_container = c
+                
+                # 2. Check Host Processes (using psutil) as fallback or comparison
+                # Getting top process by CPU/Memory
+                # Only check if container usage isn't explaining the load well (e.g. < 50% of load)
+                # But for simplicity, let's just return the top container if significant, else top process.
+                
+                hog_msg = ""
+                if top_container and max_val > 10.0: # Only blame container if it's using significant resources
+                    hog_msg = f" (En çok: {top_container['name']} %{max_val:.1f})"
+                else:
+                    # Fallback to psutil processes
+                    # Iterate over processes to find top one
+                    top_p = None
+                    max_p_val = 0
+                    try:
+                        attrs = ['name', 'cpu_percent'] if metric_type == 'cpu' else ['name', 'memory_percent']
+                        for p in psutil.process_iter(['name', 'cpu_percent', 'memory_percent']):
+                            try:
+                                val = p.info['cpu_percent'] if metric_type == 'cpu' else p.info['memory_percent']
+                                if val and val > max_p_val:
+                                    max_p_val = val
+                                    top_p = p.info['name']
+                            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                pass
+                        
+                        if top_p and max_p_val > 5.0:
+                             hog_msg = f" (En çok: {top_p} %{max_p_val:.1f})"
+                    except:
+                        pass
+                
+                return hog_msg
+            except Exception as e:
+                return ""
+
         # CPU
         if data['cpu_usage'] > THRESHOLDS['cpu']['critical']:
-            add_alert('cpu', data['cpu_usage'], 'critical', "CPU kullanımı KRİTİK seviyede: %{value}")
+            hog = get_resource_hog('cpu')
+            add_alert('cpu', data['cpu_usage'], 'critical', f"CPU kullanımı KRİTİK seviyede: %{{value}}{hog}")
         elif data['cpu_usage'] > THRESHOLDS['cpu']['warning']:
-            add_alert('cpu', data['cpu_usage'], 'warning', "CPU kullanımı yüksek: %{value}")
+            hog = get_resource_hog('cpu')
+            add_alert('cpu', data['cpu_usage'], 'warning', f"CPU kullanımı yüksek: %{{value}}{hog}")
 
         # RAM
         if data['ram_usage'] > THRESHOLDS['ram']['critical']:
-             add_alert('ram', data['ram_usage'], 'critical', "RAM kullanımı KRİTİK seviyede: %{value}")
+             hog = get_resource_hog('ram')
+             add_alert('ram', data['ram_usage'], 'critical', f"RAM kullanımı KRİTİK seviyede: %{{value}}{hog}")
         elif data['ram_usage'] > THRESHOLDS['ram']['warning']:
-             add_alert('ram', data['ram_usage'], 'warning', "RAM kullanımı yüksek: %{value}")
+             hog = get_resource_hog('ram')
+             add_alert('ram', data['ram_usage'], 'warning', f"RAM kullanımı yüksek: %{{value}}{hog}")
 
         # Disk
         if data['disk_usage'] > THRESHOLDS['disk']['critical']:
