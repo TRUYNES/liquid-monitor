@@ -749,10 +749,9 @@ async function fetchAlerts(isOpen = false) {
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-start">
-                                <p class="text-sm font-medium text-white truncate">${alert.message}</p>
+                                <p class="text-sm font-medium text-white break-words">${alert.message}</p>
                                 <span class="text-xs text-gray-500 whitespace-nowrap ml-2">${timeStr}</span>
                             </div>
-                            <p class="text-xs text-gray-400 mt-1">${alert.metric} - ${alert.value}</p>
                         </div>
                     </div>
                 `;
