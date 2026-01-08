@@ -587,7 +587,7 @@ async function updateHistory() {
 
         historyChart.update('none');
     } catch (e) {
-        console.error("History fetch error", e);
+        console.error("Update stats error", e);
     }
 }
 
@@ -850,16 +850,37 @@ document.addEventListener('DOMContentLoaded', () => {
     updateClock();
     setInterval(updateClock, 1000);
 
-    updateStats();
-    updateHistory();
-    updateNetworkHistory();
-    updateContainers();
-    fetchAlerts();
+    // Reliable Scheduling Pattern (prevents overlap and allows recovery from errors)
+    async function scheduleUpdateStats() {
+        await updateStats();
+        setTimeout(scheduleUpdateStats, 5000);
+    }
 
-    setInterval(updateStats, 5000);
-    setInterval(updateContainers, 5000);
-    setInterval(updateHistory, 60000);
-    setInterval(updateNetworkHistory, 60000);
-    setInterval(() => fetchAlerts(false), 10000); // Poll alerts every 10s
+    async function scheduleUpdateContainers() {
+        await updateContainers();
+        setTimeout(scheduleUpdateContainers, 5000);
+    }
+
+    async function scheduleUpdateHistory() {
+        await updateHistory();
+        setTimeout(scheduleUpdateHistory, 60000);
+    }
+
+    async function scheduleUpdateNetworkHistory() {
+        await updateNetworkHistory();
+        setTimeout(scheduleUpdateNetworkHistory, 60000);
+    }
+
+    async function scheduleFetchAlerts() {
+        await fetchAlerts(false);
+        setTimeout(scheduleFetchAlerts, 10000);
+    }
+
+    // Start Loops
+    scheduleUpdateStats();
+    scheduleUpdateContainers();
+    scheduleUpdateHistory();
+    scheduleUpdateNetworkHistory();
+    scheduleFetchAlerts();
 });
 
