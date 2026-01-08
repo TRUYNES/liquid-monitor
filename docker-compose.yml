@@ -11,10 +11,10 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
     environment:
-      - PROCFS_PATH=/host/proc
-      - SYSFS_PATH=/host/sys
-      - MONITOR_USER=admin
-      - MONITOR_PASS=admin
+      - PROCFS_PATH=${PROCFS_PATH:-/host/proc}
+      - SYSFS_PATH=${SYSFS_PATH:-/host/sys}
+      - MONITOR_USER=${MONITOR_USER:-admin}
+      - MONITOR_PASS=${MONITOR_PASS:-admin}
     network_mode: host
     pid: host
     command: uvicorn app.main:app --host 0.0.0.0 --port 9876

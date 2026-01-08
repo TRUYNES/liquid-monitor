@@ -27,39 +27,41 @@
 
 ## 🚀 Quick Start
 
-### Using Docker Compose (Recommended)
+### Using Docker Compose / Dockge
 
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/TRUYNES/liquid-monitor.git monitorx
-    cd monitorx
-    ```
-
-2.  Start the service:
-    ```bash
-    docker-compose up -d --build
-    ```
-
-3.  Access the dashboard at `http://localhost:9876`
-    *   **Default User:** `admin`
-    *   **Default Pass:** `admin`
-
-### Configuration
-
-You can change credentials and other settings in `docker-compose.yml`:
+**1. `docker-compose.yml`**
 
 ```yaml
+version: '3.8'
 services:
   monitorx:
-    image: monitorx
-    environment:
-      - MONITOR_USER=myuser
-      - MONITOR_PASS=mypassword
+    image: monitorx 
+    # Or build locally: 
+    # build: .
+    container_name: monitorx
+    restart: unless-stopped
     volumes:
+      - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-    network_mode: host # Recommended for accurate host metrics
+    environment:
+      - PROCFS_PATH=${PROCFS_PATH}
+      - SYSFS_PATH=${SYSFS_PATH}
+      - MONITOR_USER=${MONITOR_USER}
+      - MONITOR_PASS=${MONITOR_PASS}
+    network_mode: host
+    pid: host
+    privileged: true
+```
+
+**2. `.env`**
+
+```ini
+MONITOR_USER=admin
+MONITOR_PASS=admin
+PROCFS_PATH=/host/proc
+SYSFS_PATH=/host/sys
 ```
 
 ## 🛠️ Tech Stack
