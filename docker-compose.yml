@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   monitorx:
-    build: https://github.com/TRUYNES/liquid-monitor.git#main
+    build: .
     container_name: monitorx
     restart: unless-stopped
     volumes:
