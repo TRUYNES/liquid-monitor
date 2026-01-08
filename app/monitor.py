@@ -240,6 +240,37 @@ class SystemMonitor:
         elif data.get('cpu_temp') and data['cpu_temp'] > THRESHOLDS['temp']['warning']:
              add_alert('temp', data['cpu_temp'], 'warning', "İşlemci ısınıyor: {value}°C")
 
+        # Network Upload (Threshold: ~5 MB/s = 5120 KB/s based on user's 60mbps limit)
+        # We use a slightly lower threshold to catch spikes before saturation
+        UPLOAD_LIMIT_KB = 5120 
+        
+        if data['net_sent_speed'] > UPLOAD_LIMIT_KB:
+            # Find the network hog
+            try:
+                containers = self.get_containers(db)
+                top_c = None
+                max_tx = 0
+                
+                for c in containers:
+                    # c['net_tx_speed'] is Bytes/s, convert to KB/s
+                    tx_kb = c.get('net_tx_speed', 0) / 1024
+                    if tx_kb > max_tx:
+                        max_tx = tx_kb
+                        top_c = c
+                
+                msg = "Yüksek Upload Hızı: {value:.1f} MB/s"
+                val_mb = data['net_sent_speed'] / 1024
+                
+                # If a container accounts for > 50% of the traffic
+                if top_c and max_tx > (data['net_sent_speed'] * 0.5):
+                    hog_val_mb = max_tx / 1024
+                    msg += f" ({top_c['name']} {hog_val_mb:.1f} MB/s)"
+                
+                add_alert('net_up', val_mb, 'warning', msg)
+                
+            except Exception:
+                pass
+
         # Save to DB
         if alerts_to_add:
             from app.database import Alert
