@@ -17,14 +17,14 @@ from .monitor import SystemMonitor
 # Initialize Database
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="LiquidMonitor")
+app = FastAPI(title="MonitorX")
 monitor = SystemMonitor()
 logger = logging.getLogger("uvicorn")
 
 # --- Security Config ---
 ADMIN_USER = os.getenv("MONITOR_USER", "admin")
 ADMIN_PASS = os.getenv("MONITOR_PASS", "admin")
-SECRET_COOKIE_NAME = "liquid_session"
+SECRET_COOKIE_NAME = "monitorx_session"
 
 class LoginRequest(BaseModel):
     username: str
