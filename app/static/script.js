@@ -1,3 +1,13 @@
+// Auth Wrapper
+async function fetchWithAuth(url, options = {}) {
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        window.location.href = '/login';
+        throw new Error('Unauthorized');
+    }
+    return res;
+}
+
 // Chart instances
 let historyChart;
 let networkChart;
@@ -421,8 +431,8 @@ function checkAlerts(data) {
 async function updateStats() {
     try {
         const [currentRes, peaksRes] = await Promise.all([
-            fetch('/api/stats/current'),
-            fetch('/api/stats/peaks')
+            fetchWithAuth('/api/stats/current'),
+            fetchWithAuth('/api/stats/peaks')
         ]);
 
         const current = await currentRes.json();
@@ -547,7 +557,7 @@ function setChartPeriod(type, period) {
 
 async function updateHistory() {
     try {
-        const res = await fetch(`/api/stats/history?period=${historyPeriod}`);
+        const res = await fetchWithAuth(`/api/history?period=${historyPeriod}`);
         const data = await res.json();
 
         // Downsample for performance if needed (Backend handles main downsampling now, but extra safety)
@@ -594,7 +604,7 @@ async function updateHistory() {
 // Update network traffic history
 async function updateNetworkHistory() {
     try {
-        const res = await fetch(`/api/stats/history?period=${networkPeriod}`);
+        const res = await fetchWithAuth(`/api/history?period=${networkPeriod}`);
         const data = await res.json();
 
         const displayedData = data.length > 500 ? data.filter((_, i) => i % Math.ceil(data.length / 500) === 0) : data;
@@ -628,9 +638,22 @@ let containerData = [];
 let sortCol = 'cpu';
 let sortAsc = false;
 
+async function fetchAlerts(isOpen = false) {
+    try {
+        const res = await fetchWithAuth('/api/alerts?limit=50');
+        const alerts = await res.json();
+        containerData = data;
+
+        // Cache data for instant load on refresh
+        localStorage.setItem('cachedContainers', JSON.stringify(data));
+    } catch (e) {
+        console.error("Alerts fetch error", e);
+    }
+}
+
 async function updateContainers() {
     try {
-        const res = await fetch('/api/containers');
+        const res = await fetchWithAuth('/api/containers');
         const data = await res.json();
         containerData = data;
 
