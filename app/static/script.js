@@ -507,9 +507,10 @@ async function updateStats() {
         if (document.getElementById('net-up-val')) document.getElementById('net-up-val').innerText = `${upMB.toFixed(2)} MB / s`;
 
         // Peaks (Also convert to MB/s)
+        // Peaks (Also convert to MB/s)
         const formatPeakTime = (ts) => {
             if (!ts) return '';
-            return new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            return new Date(ts + 'Z').toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
         };
 
         if (peaks.cpu_peak) {
