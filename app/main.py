@@ -7,7 +7,7 @@ import asyncio
 from datetime import datetime, timedelta
 import logging
 
-from .database import engine, Base, get_db, SystemMetric
+from .database import engine, Base, get_db, SystemMetric, SessionLocal
 from .monitor import SystemMonitor
 
 # Initialize Database
