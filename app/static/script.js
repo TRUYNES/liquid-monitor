@@ -8,6 +8,29 @@ async function fetchWithAuth(url, options = {}) {
     return res;
 }
 
+
+// Alert Modal Functions
+function openAlertModal() {
+    document.getElementById('alert-modal').classList.remove('hidden');
+    // Fetch immediately when opened
+    fetchAlerts(true);
+}
+
+function closeAlertModal() {
+    document.getElementById('alert-modal').classList.add('hidden');
+}
+
+async function clearAlerts() {
+    try {
+        const res = await fetchWithAuth('/api/alerts/clear', { method: 'POST' });
+        if (res.ok) {
+            fetchAlerts(true);
+        }
+    } catch (e) {
+        console.error("Clear alerts error", e);
+    }
+}
+
 // Chart instances
 let historyChart;
 let networkChart;
@@ -689,10 +712,54 @@ async function fetchAlerts(isOpen = false) {
     try {
         const res = await fetchWithAuth('/api/alerts?limit=50');
         const alerts = await res.json();
-        containerData = data;
 
-        // Cache data for instant load on refresh
-        localStorage.setItem('cachedContainers', JSON.stringify(data));
+        // Render to Modal if open or requested
+        const alertList = document.getElementById('alert-list');
+        if (alertList && (isOpen || !document.getElementById('alert-modal').classList.contains('hidden'))) {
+            if (alerts.length === 0) {
+                alertList.innerHTML = '<div class="text-center text-gray-500 py-8 text-sm">Hiç bildirim yok</div>';
+                return;
+            }
+
+            let html = '';
+            alerts.forEach(alert => {
+                const date = new Date(alert.timestamp + 'Z'); // Ensure UTC parsing
+                const timeStr = date.toLocaleString('tr-TR');
+
+                let iconColor = 'text-blue-400';
+                let iconBg = 'bg-blue-500/10';
+                let icon = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+
+                if (alert.level === 'critical') {
+                    iconColor = 'text-red-400';
+                    iconBg = 'bg-red-500/10';
+                    icon = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>';
+                } else if (alert.level === 'warning') {
+                    iconColor = 'text-yellow-400';
+                    iconBg = 'bg-yellow-500/10';
+                    icon = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>';
+                }
+
+                html += `
+                    <div class="flex items-start gap-4 p-4 border-b border-gray-700/30 last:border-0 hover:bg-white/5 transition-colors">
+                        <div class="shrink-0 w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center">
+                            <svg class="w-6 h-6 ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                ${icon}
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-start">
+                                <p class="text-sm font-medium text-white truncate">${alert.message}</p>
+                                <span class="text-xs text-gray-500 whitespace-nowrap ml-2">${timeStr}</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">${alert.metric} - ${alert.value}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            alertList.innerHTML = html;
+        }
+
     } catch (e) {
         console.error("Alerts fetch error", e);
     }
