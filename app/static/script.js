@@ -505,8 +505,10 @@ async function updateStats() {
             const time = formatPeakTime(peaks.net_down_peak.timestamp);
             document.getElementById('peak-down').innerHTML = `${(peaks.net_down_peak.value / 1024).toFixed(2)} MB/s <span class="font-bold ml-1">${time}</span>`;
         }
-        const time = formatPeakTime(peaks.net_up_peak.timestamp);
-        document.getElementById('peak-up').innerHTML = `${(peaks.net_up_peak.value / 1024).toFixed(2)} MB/s <span class="font-bold ml-1">${time}</span>`;
+        if (peaks.net_up_peak) {
+            const time = formatPeakTime(peaks.net_up_peak.timestamp);
+            document.getElementById('peak-up').innerHTML = `${(peaks.net_up_peak.value / 1024).toFixed(2)} MB/s <span class="font-bold ml-1">${time}</span>`;
+        }
 
         // Totals (sum of speeds KB/s * 5s interval = Total KB)
         // Then KB -> GB ( / 1024 / 1024 )
@@ -524,6 +526,50 @@ async function updateStats() {
 
     } catch (e) {
         console.error("Failed to fetch stats", e);
+    }
+}
+
+// Reliable Scheduling Pattern (prevents overlap and allows recovery from errors)
+// Using .then/finally to ensure loop continues even if async function hangs or errors weirdly
+async function scheduleUpdateStats() {
+    try {
+        await updateStats();
+    } catch (e) {
+        console.error("Scheduler error", e);
+    } finally {
+        setTimeout(scheduleUpdateStats, 5000);
+    }
+}
+
+async function scheduleUpdateContainers() {
+    try {
+        await updateContainers();
+    } finally {
+        setTimeout(scheduleUpdateContainers, 5000);
+    }
+}
+
+async function scheduleUpdateHistory() {
+    try {
+        await updateHistory();
+    } finally {
+        setTimeout(scheduleUpdateHistory, 60000);
+    }
+}
+
+async function scheduleUpdateNetworkHistory() {
+    try {
+        await updateNetworkHistory();
+    } finally {
+        setTimeout(scheduleUpdateNetworkHistory, 60000);
+    }
+}
+
+async function scheduleFetchAlerts() {
+    try {
+        await fetchAlerts(false);
+    } finally {
+        setTimeout(scheduleFetchAlerts, 10000);
     }
 }
 
