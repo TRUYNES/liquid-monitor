@@ -35,11 +35,10 @@
 version: '3.8'
 services:
   monitorx:
-    # image: monitorx 
-    # Must build from source as there is no public image yet:
-    build: .
-    # Or if using Dockge/Portainer with git:
-    # build: https://github.com/TRUYNES/liquid-monitor.git#main
+    # Build directly from GitHub (Recommended for Dockge/Portainer)
+    build: https://github.com/TRUYNES/liquid-monitor.git#main
+    # Or build locally if you cloned the repo:
+    # build: .
     container_name: monitorx
     restart: unless-stopped
     volumes:
