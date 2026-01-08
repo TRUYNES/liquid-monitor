@@ -15,6 +15,9 @@ services:
     environment:
       - PROCFS_PATH=/host/proc
       - SYSFS_PATH=/host/sys
+      # Kullanıcı Adı ve Şifre Ayarları
+      - MONITOR_USER=admin
+      - MONITOR_PASS=admin
     # Host Mode optimization for Raspberry Pi / Linux
     network_mode: host
     pid: host
